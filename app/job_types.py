@@ -8,6 +8,7 @@ class JobCard:
     location: str
     url: str
     is_easy_apply: bool
+    is_already_applied: bool = False
 
 
 @dataclass
