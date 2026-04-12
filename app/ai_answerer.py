@@ -78,6 +78,30 @@ class AIAnswerer:
         except json.JSONDecodeError:
             return []
 
+    def analyze_dom_for_elements(self, dom_text: str, goal_description: str) -> List[str]:
+        if not self.enabled or not dom_text:
+            return []
+        prompt = (
+            "Analyze the provided HTML snippet from LinkedIn.\n"
+            f"Goal: {goal_description}\n"
+            "Identify the most likely CSS selectors (IDs, classes, or attributes) for the target elements.\n"
+            "Return STRICT JSON only: {'selectors': ['s1', 's2', ...]}\n"
+            "Prioritize buttons, links, or containers that match the goal.\n\n"
+            f"DOM Snippet:\n{dom_text}"
+        )
+        raw = self._chat(prompt).strip()
+        try:
+            # Basic cleaning if AI includes markdown backticks
+            if "```json" in raw:
+                raw = raw.split("```json")[-1].split("```")[0]
+            elif "```" in raw:
+                raw = raw.split("```")[-1].split("```")[0]
+            payload = json.loads(raw)
+            selectors = payload.get("selectors", [])
+            return [str(s) for s in selectors if s]
+        except (json.JSONDecodeError, AttributeError):
+            return []
+
     def _chat(self, prompt: str) -> str:
         payload = {
             "model": self.model,

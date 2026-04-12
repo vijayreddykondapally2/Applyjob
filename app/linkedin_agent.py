@@ -13,27 +13,9 @@ from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwrigh
 from app.ai_answerer import AIAnswerer
 from app.job_types import ApplyResult, JobCard
 from app.question_memory import QuestionMemory
-
-DEBUG_LOG_PATH = "/Users/apple/Projects/linkedin-apply-agent/.cursor/debug-786398.log"
-DEBUG_SESSION_ID = "786398"
+from app.utils import debug_log, get_compressed_dom
 
 
-def _dbg(run_id: str, hypothesis_id: str, location: str, message: str, data: Dict[str, Any]) -> None:
-    payload = {
-        "sessionId": DEBUG_SESSION_ID,
-        "runId": run_id,
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data,
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        Path(DEBUG_LOG_PATH).parent.mkdir(parents=True, exist_ok=True)
-        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
-            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
-    except Exception:
-        pass
 
 
 class LinkedInApplyAgent:
@@ -167,6 +149,7 @@ class LinkedInApplyAgent:
     ) -> List[JobCard]:
         assert self.page is not None
         run_id = f"find_jobs_{int(time.time())}"
+        print(f"TRACE: Entering find_jobs (keywords='{keywords}', location='{location}')")
         if direct_search_url.strip():
             search_url = direct_search_url.strip()
             if easy_apply_only and "f_AL=true" not in search_url:
@@ -180,7 +163,7 @@ class LinkedInApplyAgent:
             if easy_apply_only:
                 search_url += "&f_AL=true"
         # region agent log
-        _dbg(
+        debug_log(
             run_id,
             "H1",
             "linkedin_agent.py:find_jobs:search_url",
@@ -189,10 +172,32 @@ class LinkedInApplyAgent:
         )
         # endregion
         try:
+            print(f"TRACE: Navigating to {search_url}")
             self.page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
-        except Exception:
+            print("TRACE: Navigation completed.")
+            
+            # SESSION CHECK: Check if we are at a login wall or checkpoint
+            curr_url = self.page.url.lower()
+            if "login" in curr_url or "checkpoint" in curr_url or "authwall" in curr_url:
+                print("!!! EXPIRED SESSION / AUTHWALL DETECTED !!!")
+                print(f"The bot has been redirected to: {curr_url}")
+                print("Please log in manually in the browser window or check your credentials.")
+                # Save diagnostic screenshot immediately
+                self.page.screenshot(path="data/authwall_detected.png")
+                return []
+            
+            # Save immediate diagnostic snapshot
+            try:
+                diag_dom = get_compressed_dom(self.page, "body")
+                Path("data/initial_search_load.json").write_text(json.dumps({"url": curr_url, "dom": diag_dom}, indent=2))
+                print("TRACE: Saved initial search load snapshot.")
+            except Exception:
+                pass
+
+        except Exception as e:
+            print(f"TRACE: Navigation failed: {str(e)}")
             # region agent log
-            _dbg(
+            debug_log(
                 run_id,
                 "H4",
                 "linkedin_agent.py:find_jobs:goto_exception",
@@ -202,25 +207,168 @@ class LinkedInApplyAgent:
             # endregion
             # Keep loop alive if LinkedIn intermittently stalls.
             return []
-        self.page.wait_for_timeout(3500)
-        if easy_apply_only:
-            self._apply_top_jobs_and_easy_apply_filters()
-            self.page.wait_for_timeout(2000)
 
-        cards = self.page.locator("ul.jobs-search__results-list li")
+        # 1. Check for Security Check / Verification
+        security_selectors = ["#captcha-internal", ".challange-header", "iframe[src*='security']", "h1:has-text('Quick security check')"]
+        for sel in security_selectors:
+            if self.page.locator(sel).count() > 0:
+                print("!!! SECURITY CHECK DETECTED !!!")
+                print("Please complete the verification in the browser window manually.")
+                self.page.wait_for_timeout(10000) # Give user a moment to see it
+
+        # 2. Wait for either job cards to appear OR a "No results" indicator
+        results_found = False
+        wait_start = time.time()
+        while time.time() - wait_start < 15: # 15s max wait for loading
+            # Check for common skeleton loader or loading spinner
+            if self.page.locator(".jobs-search-results-list__skeleton, .artdeco-loader").count() == 0:
+                # Skeletons gone, check if results arrived
+                if self.page.locator("li[data-job-id], li[data-occludable-job-id], .job-card-container").count() > 0:
+                    results_found = True
+                    break
+                # Check for "No results" text
+                if self.page.locator(":has-text('No matching jobs found'), :has-text('No jobs found')").count() > 0:
+                    break
+            self.page.wait_for_timeout(1000)
+        print(f"TRACE: Wait loop finished. Results found indicator: {results_found}")
+        
+        if easy_apply_only:
+            print("TRACE: Applying filters...")
+            self._apply_top_jobs_and_easy_apply_filters()
+            self.page.wait_for_timeout(1500)
+
+        print("TRACE: Starting job card discovery...")
+        # Updated selectors to handle both guest and logged-in UI patterns.
+        possible_search_list_selectors = [
+            "li[data-job-id]",
+            "div[data-job-id]",
+            "li[data-occludable-job-id]",
+            "div[data-occludable-job-id]",
+            ".jobs-search-results-list__list-item",
+            "ul.jobs-search__results-list li",
+            "li.jobs-search-results__list-item",
+            "div.job-card-container",
+            "div.base-card",
+        ]
+        
+        # Priority: if currentJobId is in URL, try to find that specific card first
+        target_job_id = None
+        if "currentJobId=" in search_url:
+            parsed = urlparse(search_url)
+            qs = parse_qs(parsed.query)
+            target_job_id = qs.get("currentJobId", [None])[0]
+        
+        if target_job_id:
+            possible_search_list_selectors.insert(0, f"[data-job-id='{target_job_id}']")
+            possible_search_list_selectors.insert(1, f"[data-occludable-job-id='{target_job_id}']")
+
+        # Active Scrolling to find target IDs or populate list
+        results_container = self.page.locator(".jobs-search-results-list, .scaffold-layout__list").first
+        if results_container.count() > 0:
+            # Scroll aggressively to trigger lazy loading of at least 25 jobs
+            print("TRACE: Scrolling results sidebar for lazy loading...")
+            for _ in range(6): # Increased from 3 to 6
+                results_container.evaluate("el => el.scrollTop += 1200") # Increased distance
+                self.page.wait_for_timeout(600)
+            
+            # If we have a target ID, specifically try to find it
+            if target_job_id:
+                target_sel = f"[data-job-id='{target_job_id}'], [data-occludable-job-id='{target_job_id}']"
+                for _ in range(8): # Increased from 5 to 8
+                    if self.page.locator(target_sel).count() > 0:
+                        break
+                    results_container.evaluate("el => el.scrollTop += 1500")
+                    self.page.wait_for_timeout(800)
+
+        cards = None
+        for selector in possible_search_list_selectors:
+            try:
+                cards = self.page.locator(selector)
+                if cards.count() > 0:
+                    # scroll first card into view to be safe
+                    cards.first.scroll_into_view_if_needed()
+                    break
+            except Exception:
+                continue
+        
+        if not cards or cards.count() == 0:
+            # Fallback: ask AI to find selectors for job cards if standard ones fail.
+            if self.ai_answerer and self.ai_answerer.enabled:
+                dom = get_compressed_dom(self.page, ".scaffold-layout__list, .jobs-search-results-list, body")
+                ai_selectors = self.ai_answerer.analyze_dom_for_elements(dom, "Find the CSS selector for a single job card/item in the search results list.")
+                for selector in ai_selectors:
+                    try:
+                        cards = self.page.locator(selector)
+                        if cards.count() > 0:
+                            print(f"AI discovered job card selector: {selector}")
+                            # region agent log
+                            debug_log(
+                                run_id,
+                                "H5",
+                                "linkedin_agent.py:find_jobs:ai_selector_success",
+                                "AI successfully identified Job Card selector.",
+                                {"selector": selector, "count": cards.count()},
+                            )
+                            # endregion
+                            break
+                    except Exception:
+                        continue
+            else:
+                # If no AI answerer or disabled, still log the issue
+                print("DEBUG: AI Answerer disabled or missing; skipping AI selector discovery.")
+
+        if not cards or cards.count() == 0:
+            # Diagnostic Dump: save the DOM if search failed to find any cards.
+            try:
+                diag_dom = get_compressed_dom(self.page, "body")
+                diag_path = Path("data/diagnostic_dom.json")
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                diag_path.write_text(json.dumps({"url": self.page.url, "dom": diag_dom}, indent=2), encoding="utf-8")
+                
+                # Save screenshot for visual debugging
+                screenshot_path = Path("data/diagnostic_screenshot.png")
+                self.page.screenshot(path=str(screenshot_path))
+                
+                print(f"DEBUG: No jobs found. Diagnostics saved to {diag_path} and {screenshot_path}")
+            except Exception:
+                pass
+            return []
         count = min(cards.count(), max_jobs)
         jobs: List[JobCard] = []
 
         for i in range(count):
             card = cards.nth(i)
-            title = (card.locator("h3").inner_text(timeout=1500) or "").strip()
-            company = (card.locator("h4").inner_text(timeout=1500) or "").strip()
-            loc = (card.locator(".job-search-card__location").inner_text(timeout=1500) or "").strip()
-            url = card.locator("a").first.get_attribute("href") or ""
-            easy_badge = card.locator("span:has-text('Easy Apply')").count() > 0
+            # Try multiple common selectors for title and company within the card
+            title_loc = card.locator("h3, .job-card-list__title, .base-search-card__title, .artdeco-entity-lockup__title, span.strong").first
+            company_loc = card.locator("h4, .job-card-container__company-name, .base-search-card__subtitle, .artdeco-entity-lockup__subtitle").first
+            location_loc = card.locator(".job-search-card__location, .job-card-container__metadata-item, .base-search-card__metadata, .artdeco-entity-lockup__caption").first
+            
+            title = (title_loc.inner_text(timeout=1500) if title_loc.count() > 0 else "").strip()
+            company = (company_loc.inner_text(timeout=1500) if company_loc.count() > 0 else "").strip()
+            loc = (location_loc.inner_text(timeout=1500) if location_loc.count() > 0 else "").strip()
+            
+            # Find the most relevant Link (prioritizing title links)
+            url = ""
+            link_locators = [
+                card.locator("a[href*='/jobs/view/']"),
+                card.locator("a.job-card-list__title"),
+                card.locator("a.base-card__full-link"),
+                card.locator("a.job-card-container__link"),
+                card.locator("a").first,
+            ]
+            for link_loc in link_locators:
+                if link_loc.count() > 0:
+                    url = link_loc.first.get_attribute("href") or ""
+                    if url:
+                        break
+
+            easy_badge = card.locator("span:has-text('Easy Apply'), .job-card-container__apply-method, .job-card-list__footer-item").count() > 0
+            # Double check already applied
             card_text = (card.inner_text(timeout=1500) or "").lower()
-            already_applied = "applied" in card_text
+            already_applied = "applied" in card_text or card.locator(".job-card-container__footer-item:has-text('Applied'), .job-card-list__footer-item:has-text('Applied')").count() > 0
+            
             if url and title:
+                ukey = f"{title}_{company}_{loc}".lower().replace(" ", "_").strip()
                 jobs.append(
                     JobCard(
                         title=title,
@@ -229,10 +377,23 @@ class LinkedInApplyAgent:
                         url=url.split("?")[0],
                         is_easy_apply=easy_badge,
                         is_already_applied=already_applied,
+                        unique_key=ukey,
                     )
                 )
+
+        if not jobs and cards.count() > 0:
+            # If we matched cards but couldn't parse any jobs, save diagnostics
+            try:
+                diag_path = Path("data/diagnostic_dom.json")
+                diag_dom = get_compressed_dom(self.page, "body")
+                diag_path.write_text(json.dumps({"url": self.page.url, "dom": diag_dom, "cards_count": cards.count()}, indent=2), encoding="utf-8")
+                self.page.screenshot(path="data/diagnostic_screenshot.png")
+                print(f"DEBUG: Matched {cards.count()} elements but failed to parse job details. Diagnostics saved.")
+            except Exception:
+                pass
+
         # region agent log
-        _dbg(
+        debug_log(
             run_id,
             "H2",
             "linkedin_agent.py:find_jobs:results_summary",
@@ -249,8 +410,15 @@ class LinkedInApplyAgent:
     def _apply_top_jobs_and_easy_apply_filters(self) -> None:
         """
         Clicks top Jobs filter and Easy Apply chip under search bar.
+        Skips if already active in URL to save time and avoid toggling.
         """
         assert self.page is not None
+        
+        # If the URL already shows filters are active, we can skip the heavy UI clicking.
+        current_url = self.page.url.lower()
+        if "f_al=true" in current_url:
+            return
+
         jobs_candidates = [
             "div.search-reusables__filters-bar button:has-text('Jobs')",
             "div.search-reusables__filters-bar [role='button']:has-text('Jobs')",
@@ -272,8 +440,8 @@ class LinkedInApplyAgent:
                 if btn.count() == 0:
                     continue
                 btn.scroll_into_view_if_needed()
-                btn.click(timeout=4000)
-                self.page.wait_for_timeout(600)
+                btn.click(timeout=1500)
+                self.page.wait_for_timeout(400)
                 break
             except Exception:
                 continue
@@ -286,10 +454,24 @@ class LinkedInApplyAgent:
                 if btn.count() == 0:
                     continue
                 btn.scroll_into_view_if_needed()
+                
+                # Check if already active before clicking
+                is_active = btn.evaluate(
+                    """el => {
+                        const pressed = (el.getAttribute('aria-pressed') || '').toLowerCase() === 'true';
+                        const checked = (el.getAttribute('aria-checked') || '').toLowerCase() === 'true';
+                        const cls = el.className.toLowerCase();
+                        return pressed || checked || cls.includes('selected') || cls.includes('active');
+                    }"""
+                )
+                if is_active:
+                    clicked_easy = True
+                    break
+
                 try:
-                    btn.click(timeout=5000)
+                    btn.click(timeout=2000)
                 except Exception:
-                    btn.click(timeout=5000, force=True)
+                    btn.click(timeout=2000, force=True)
                 clicked_easy = True
                 break
             except Exception:
@@ -353,14 +535,27 @@ class LinkedInApplyAgent:
             return ApplyResult(job.title, job.company, job.url, "easy_apply", "skipped", "Already applied (detail page).")
 
         easy_btn = self.page.locator("button:has-text('Easy Apply')")
+        if easy_btn.count() == 0 and self.ai_answerer and self.ai_answerer.enabled:
+            dom = get_compressed_dom(self.page, ".jobs-search__job-details, .jobs-details, body")
+            ai_selectors = self.ai_answerer.analyze_dom_for_elements(dom, "Find the 'Easy Apply' button.")
+            for selector in ai_selectors:
+                try:
+                    easy_btn = self.page.locator(selector)
+                    if easy_btn.count() > 0:
+                        break
+                except Exception:
+                    continue
+
         if easy_btn.count() == 0:
             return ApplyResult(job.title, job.company, job.url, "easy_apply", "skipped", "Button not found")
 
-        easy_btn.first.scroll_into_view_if_needed()
         easy_btn.first.click(timeout=5000)
         self.page.wait_for_timeout(1200)
-        filled = self._autofill_external_form()
-        progressed = self._process_easy_apply_dialog()
+        
+        # Scope form interactions to the dialog if possible
+        dialog_selector = "div[role='dialog'], .jobs-easy-apply-modal"
+        filled = self._autofill_external_form(scope_selector=dialog_selector)
+        progressed = self._process_easy_apply_dialog(scope_selector=dialog_selector)
         if progressed == "submitted":
             return ApplyResult(
                 job.title,
@@ -416,23 +611,69 @@ class LinkedInApplyAgent:
             f"Company portal opened; auto-filled {filled_count} field(s); finish manually.",
         )
 
-    def _detect_apply_action(self) -> str:
+    def _detect_apply_action(self, scope_selector_override: str = "") -> str:
         assert self.page is not None
-        body = (self.page.inner_text("body") or "").lower()
-        if "already applied" in body:
+        # Scoped container selectors for the right-hand details pane
+        container_selectors = [
+            ".jobs-search-results-list__detail-container",
+            ".jobs-details",
+            ".job-view-layout",
+            ".scaffold-layout__detail",
+            "#main"
+        ]
+        
+        container = self.page
+        found_container = "body"
+        if not scope_selector_override:
+            for sel in container_selectors:
+                if self.page.locator(sel).count() > 0:
+                    container = self.page.locator(sel).first
+                    found_container = sel
+                    break
+        else:
+            container = self.page.locator(scope_selector_override).first
+            found_container = scope_selector_override
+
+        print(f"TRACE: Detecting action within container: {found_container}")
+        
+        # Check for Applied status explicitly within this container
+        pane_text = (container.inner_text(timeout=2000) or "").lower()
+        if "already applied" in pane_text or "applied on" in pane_text:
+            print("TRACE: 'Applied' status detected in details pane.")
             return "already"
-        easy_btn = self.page.locator("button:has-text('Easy Apply')")
-        if easy_btn.count() > 0:
-            return "easy"
-        external_link = self.page.locator("a:has-text('Apply'), a:has-text('Apply on company website')")
-        if external_link.count() > 0:
-            return "external"
+        
+        # Check for Easy Apply
+        easy_candidates = [
+            "button:has-text('Easy Apply')",
+            "button.jobs-apply-button",
+            "button[aria-label*='Easy Apply']",
+            ".jobs-apply-button--top-card button"
+        ]
+        for sel in easy_candidates:
+            if container.locator(sel).count() > 0:
+                print(f"TRACE: 'Easy Apply' action detected via {sel}")
+                return "easy"
+                
+        # Check for External Apply
+        external_candidates = [
+            "a:has-text('Apply')",
+            "a:has-text('Apply on company website')",
+            "button:has-text('Apply')",
+            ".jobs-apply-button:not(:has-text('Easy Apply'))"
+        ]
+        for sel in external_candidates:
+            if container.locator(sel).count() > 0:
+                print(f"TRACE: 'External Apply' action detected via {sel}")
+                return "external"
+        
         return "none"
 
     def _apply_from_job_page(self, job: JobCard) -> ApplyResult:
+        # Wait a moment for the specific job's details to be dominant
+        self.page.wait_for_timeout(1000)
         action = self._detect_apply_action()
         # region agent log
-        _dbg(
+        debug_log(
             f"apply_{int(time.time())}",
             "H3",
             "linkedin_agent.py:_apply_from_job_page:action_detected",
@@ -448,73 +689,194 @@ class LinkedInApplyAgent:
             return self._try_external_apply(job)
         return ApplyResult(job.title, job.company, job.url, "n/a", "skipped", "No Easy Apply/Apply button found.")
 
-    def process_jobs(self, jobs: List[JobCard]) -> List[ApplyResult]:
+    def _is_pane_showing_job(self, title: str, company: str) -> bool:
+        """
+        Verify that the right-hand detail pane is actually showing the job we just clicked.
+        """
+        assert self.page is not None
+        pane = self.page.locator(".jobs-details, .jobs-search-results-list__detail-container, .scaffold-layout__detail").first
+        if pane.count() == 0:
+            return False
+        text = (pane.inner_text() or "").lower()
+        # Check if Title or Company is present in the pane
+        return title.lower() in text or company.lower() in text
+
+    def process_jobs(self, discovered_jobs: List[JobCard]) -> List[ApplyResult]:
+        """
+        New 'Direct Sidebar Crawler' logic: 
+        Iterates through the visible sidebar elements and applies one-by-one.
+        """
+        assert self.page is not None
         results: List[ApplyResult] = []
-        seen_companies: Set[str] = set()
+        
+        # 1. Reset history cache for this run if we want to be fresh
+        # (Keeping history for now but the user can delete the file)
         historical = self._load_historical_results()
-        historical_urls = {self._normalize_url(r.get("url", "")) for r in historical}
-        historical_companies = {
-            (r.get("company") or "").strip().lower()
-            for r in historical
-            if (r.get("company") or "").strip()
-        }
+        historical_keys = {(r.get("unique_key") or "").strip().lower() for r in historical if r.get("unique_key")}
 
-        for job in jobs:
-            if job.is_already_applied:
-                results.append(
-                    ApplyResult(
-                        job.title,
-                        job.company,
-                        job.url,
-                        "n/a",
-                        "skipped",
-                        "Already applied (job card).",
-                    )
-                )
+        # 2. Locate the cards in the sidebar
+        sidebar_items = self.page.locator("li.jobs-search-results__list-item").all()
+        print(f"TRACE: Sidebar Crawler started. Found {len(sidebar_items)} visible items.")
+        
+        for idx, card in enumerate(sidebar_items):
+            try:
+                card.scroll_into_view_if_needed()
+                
+                # Extract essential info from card to check history
+                title_el = card.locator("a.job-card-list__title, a.job-card-container__link").first
+                company_el = card.locator(".job-card-container__primary-description, .job-card-list__entity-lockup-title").first
+                
+                title = (title_el.inner_text() or "Unknown Title").split("\n")[0].strip()
+                company = (company_el.inner_text() or "Unknown Company").split("\n")[0].strip()
+                loc = "India" # Fallback
+                
+                ukey = f"{title}_{company}_{loc}".lower().replace(" ", "_").strip()
+                
+                print(f"TRACE: Crawler processing card #{idx+1}: {title} @ {company}")
+                
+                if ukey in historical_keys:
+                    print(f"[{company}] Skip: Already processed '{title}' previously.")
+                    continue
+                
+                # 3. CLICK THE CARD (Title Link)
+                print(f"TRACE: Clicking title link for {title}...")
+                title_el.click(force=True)
+                
+                # 4. WAIT FOR DETAILS PANE TO REFRESH
+                pane_ready = False
+                wait_start = time.time()
+                while time.time() - wait_start < 5:
+                    if self._is_pane_showing_job(title, company):
+                        # Extra check: ensure Easy Apply button is found or "Applied" status is clear
+                        if self._detect_apply_action() != "none":
+                            pane_ready = True
+                            break
+                    self.page.wait_for_timeout(500)
+                
+                if not pane_ready:
+                    print(f"TRACE: Detail pane for {title} didn't load action button in time. Skipping.")
+                    continue
+                
+                # 5. DETECT AND APPLY
+                action = self._detect_apply_action()
+                if action == "already":
+                    print(f"[{company}] Already applied (verified in details pane).")
+                    results.append(ApplyResult(title, company, "n/a", "n/a", "skipped", "Already applied."))
+                elif action == "easy":
+                    print(f"[{company}] Action: Easy Apply!")
+                    # Create a temporary job object for the apply method
+                    tmp_job = JobCard(title, company, loc, "n/a", True, False, ukey)
+                    result = self._try_easy_apply(tmp_job)
+                    results.append(result)
+                elif action == "external":
+                    print(f"[{company}] Action: External Apply (Skipping as per config).")
+                    results.append(ApplyResult(title, company, "n/a", "n/a", "skipped", "External link."))
+                
+                # 6. CLEANUP
+                self._cleanup_dialogs()
+                self.page.wait_for_timeout(1000)
+
+            except Exception as e:
+                print(f"TRACE: Error processing card #{idx+1}: {e}")
                 continue
-
-            normalized_url = self._normalize_url(job.url)
-            company_key = job.company.strip().lower()
-
-            if normalized_url in historical_urls:
-                results.append(
-                    ApplyResult(
-                        job.title,
-                        job.company,
-                        job.url,
-                        "n/a",
-                        "skipped",
-                        "Already attempted earlier (URL match).",
-                    )
-                )
-                continue
-
-            if company_key in historical_companies or company_key in seen_companies:
-                results.append(
-                    ApplyResult(
-                        job.title,
-                        job.company,
-                        job.url,
-                        "n/a",
-                        "skipped",
-                        "Company already attempted; skipping duplicate.",
-                    )
-                )
-                continue
-
-            if not self._confirm(job):
-                results.append(ApplyResult(job.title, job.company, job.url, "n/a", "skipped", "User skipped"))
-                continue
-
-            self.page.goto(job.url, wait_until="domcontentloaded")
-            self.page.wait_for_timeout(2000)
-            result = self._apply_from_job_page(job)
-            results.append(result)
-
-            # Mark this company as attempted only if we actually proceeded.
-            if result.status in {"needs_manual_review", "applied", "submitted"}:
-                seen_companies.add(company_key)
+                
         return results
+
+    def _click_job_card(self, job: JobCard) -> bool:
+        """
+        Tries to find and click the job card in the search results sidebar.
+        """
+        assert self.page is not None
+        # Try finding by data-job-id or data-occludable-job-id first
+        job_id = ""
+        if "/view/" in job.url:
+            job_id = job.url.split("/view/")[-1].split("/")[0].split("?")[0]
+        
+        selectors = []
+        if job_id:
+            selectors.append(f"[data-job-id='{job_id}'] a.job-card-list__title")
+            selectors.append(f"[data-occludable-job-id='{job_id}'] a.job-card-container__link")
+            selectors.append(f"[data-job-id='{job_id}']")
+            selectors.append(f"[data-occludable-job-id='{job_id}']")
+        
+        # Fallback to title-based search if ID fails
+        selectors.append(f"a:has-text('{job.title}')")
+        selectors.append(f"div.job-card-container:has-text('{job.company}')")
+        
+        for selector in selectors:
+            try:
+                card = self.page.locator(selector).first
+                if card.count() > 0:
+                    card.scroll_into_view_if_needed()
+                    print(f"TRACE: Clicking job card via {selector}")
+                    # Try standard click
+                    try:
+                        card.click(timeout=2000)
+                    except Exception:
+                        # JS-based click if standard fails
+                        card.evaluate("el => el.click ? el.click() : el.dispatchEvent(new MouseEvent('click', {bubbles: true}))")
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def click_next_page(self) -> bool:
+        """
+        Finds and clicks the 'Next' page button in pagination.
+        """
+        assert self.page is not None
+        next_selectors = [
+            "button[aria-label='Next']",
+            "button[aria-label='Next page']",
+            "li.artdeco-pagination__item--next button",
+            "button:has-text('Next')",
+        ]
+        
+        # Scroll to bottom first to ensure pagination is loaded
+        try:
+            results_list = self.page.locator(".jobs-search-results-list, .scaffold-layout__list").first
+            if results_list.count() > 0:
+                results_list.evaluate("el => el.scrollTop = el.scrollHeight")
+            else:
+                self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            self.page.wait_for_timeout(1000)
+        except Exception:
+            pass
+
+        for selector in next_selectors:
+            try:
+                btn = self.page.locator(selector).first
+                if btn.count() > 0 and btn.is_enabled():
+                    btn.click(timeout=5000)
+                    self.page.wait_for_timeout(2000)
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def _cleanup_dialogs(self) -> None:
+        """
+        Closes any lingering dialogs, dismissals, or 'Got it' popups.
+        """
+        assert self.page is not None
+        dismiss_selectors = [
+            "button[aria-label='Dismiss']",
+            "button[aria-label*='Dismiss']",
+            "button[aria-label='Close']",
+            "button:has-text('Got it')",
+            "button:has-text('Dismiss')",
+            ".artdeco-modal__dismiss",
+            ".artdeco-toast-item__dismiss",
+        ]
+        for sel in dismiss_selectors:
+            try:
+                btn = self.page.locator(sel).first
+                if btn.count() > 0 and btn.is_visible():
+                    print(f"TRACE: Cleaning up UI (clicking {sel}).")
+                    btn.click(timeout=1500)
+                    self.page.wait_for_timeout(500)
+            except Exception:
+                continue
 
     @staticmethod
     def save_results(results: List[ApplyResult], path: str = "data/results.json") -> None:
@@ -524,9 +886,9 @@ class LinkedInApplyAgent:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(merged, f, indent=2)
 
-    def _autofill_external_form(self) -> int:
+    def _autofill_external_form(self, scope_selector: str = "") -> int:
         """
-        Generic assisted autofill for external ATS pages.
+        Generic assisted autofill for external ATS pages or Easy Apply dialogs.
         We only fill common text-like fields and skip password/file/hidden controls.
         """
         assert self.page is not None
@@ -538,7 +900,12 @@ class LinkedInApplyAgent:
             return 0
 
         filled = 0
-        fields = self.page.locator("input, textarea, select")
+        container = self.page.locator(scope_selector).first if scope_selector else self.page
+        if scope_selector and container.count() == 0:
+            # Fallback to page if scoped container not found
+            container = self.page
+
+        fields = container.locator("input, textarea, select")
         total = fields.count()
 
         for i in range(total):
@@ -628,13 +995,13 @@ class LinkedInApplyAgent:
                     return
             field.fill(self.default_notice_days)
 
-    def _process_easy_apply_dialog(self) -> str:
+    def _process_easy_apply_dialog(self, scope_selector: str = "") -> str:
         assert self.page is not None
         for _ in range(8):
-            self._autofill_external_form()
-            if self._required_fields_missing_count() > 0:
+            self._autofill_external_form(scope_selector=scope_selector)
+            if self._required_fields_missing_count(scope_selector=scope_selector) > 0:
                 self._prompt_manual_required_fields()
-                if self._required_fields_missing_count() > 0:
+                if self._required_fields_missing_count(scope_selector=scope_selector) > 0:
                     return "blocked"
 
             submit_btn = self.page.locator("button:has-text('Submit application'), button[aria-label*='Submit application']")
@@ -654,16 +1021,36 @@ class LinkedInApplyAgent:
                 next_btn.first.click()
                 self.page.wait_for_timeout(1000)
                 continue
+
+            # Final Fallback: use AI to find any clickable progress button in the dialog
+            if self.ai_answerer and self.ai_answerer.enabled:
+                dom = get_compressed_dom(self.page, scope_selector or "body")
+                ai_selectors = self.ai_answerer.analyze_dom_for_elements(dom, "Find the 'Next', 'Review', or 'Submit' button in this application dialog.")
+                clicked = False
+                for selector in ai_selectors:
+                    try:
+                        btn = self.page.locator(selector).first
+                        if btn.count() > 0 and btn.is_enabled():
+                            btn.click()
+                            self.page.wait_for_timeout(1000)
+                            clicked = True
+                            break
+                    except Exception:
+                        continue
+                if clicked:
+                    continue
             break
         return "needs_manual_review"
 
-    def _required_fields_missing_count(self) -> int:
+    def _required_fields_missing_count(self, scope_selector: str = "") -> int:
         assert self.page is not None
         try:
             return int(
                 self.page.evaluate(
-                    """() => {
-                        const required = Array.from(document.querySelectorAll('input[required], textarea[required], select[required]'));
+                    """([selector]) => {
+                        const root = selector ? document.querySelector(selector) : document;
+                        if (!root) return 0;
+                        const required = Array.from(root.querySelectorAll('input[required], textarea[required], select[required]'));
                         let missing = 0;
                         for (const el of required) {
                           if (!(el instanceof HTMLElement)) continue;
@@ -673,7 +1060,8 @@ class LinkedInApplyAgent:
                           if (!val) missing += 1;
                         }
                         return missing;
-                    }"""
+                    }""",
+                    [scope_selector]
                 )
             )
         except Exception:
