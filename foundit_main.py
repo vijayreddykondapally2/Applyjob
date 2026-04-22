@@ -5,7 +5,7 @@ import json
 from app.foundit_agent import FounditApplyAgent
 from app.ai_answerer import AIAnswerer
 
-def main():
+def run_foundit():
     load_dotenv()
     
     # Load candidate profile
@@ -51,4 +51,4 @@ def main():
         agent.close()
 
 if __name__ == "__main__":
-    main()
+    run_foundit()

@@ -5,7 +5,7 @@ import json
 from app.monster_agent import MonsterApplyAgent
 from app.ai_answerer import AIAnswerer
 
-def main():
+def run_monster():
     load_dotenv()
     
     profile_path = "data/profile.json"
@@ -43,4 +43,4 @@ def main():
         agent.close()
 
 if __name__ == "__main__":
-    main()
+    run_monster()
