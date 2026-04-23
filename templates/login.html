@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Login — ApplyJob AI{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">⚡</div>
+            <h1>Welcome Back</h1>
+            <p>Sign in to your ApplyJob AI account</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required
+                       placeholder="you@example.com" autocomplete="email" autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="••••••••" autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                Sign In
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Don't have an account? <a href="{{ url_for('register') }}">Create one</a></p>
+        </div>
+    </div>
+
+    <div class="auth-features">
+        <div class="feature-item">
+            <div class="feature-icon">🤖</div>
+            <h3>AI-Powered</h3>
+            <p>Groq AI fills forms intelligently using your profile</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">🌐</div>
+            <h3>4 Portals</h3>
+            <p>LinkedIn, Naukri, Foundit & Monster — all at once</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">👥</div>
+            <h3>Multi-User</h3>
+            <p>Each user gets isolated profiles, credentials & history</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

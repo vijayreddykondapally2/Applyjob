@@ -27,13 +27,10 @@ def run_foundit():
         agent.login()
         
         # Keywords to search one by one
-        keywords = [
-            "ETL Testing",
-            "ETL Tester",
-            "Data QA",
-            "Data Testing",
-            "ETL QA",
-        ]
+        # Use all dynamic keywords in a single search for better narrowing
+        keywords = [os.getenv("JOB_KEYWORDS", "ETL Testing").strip()]
+        
+        location = os.getenv("JOB_LOCATION", "India")
         
         for keyword in keywords:
             # Stop early if 3 pages done or 15 min expired
@@ -42,7 +39,7 @@ def run_foundit():
                 print(f"\n🛑 {reason} reached. Done!")
                 break
             try:
-                agent.bulk_apply(keyword, location="India", max_pages=3)
+                agent.bulk_apply(keyword, location=location, max_pages=3)
             except Exception as e:
                 print(f"\n  !! Error during bulk apply for '{keyword}': {e}")
                 continue

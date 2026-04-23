@@ -42,16 +42,15 @@ def run_naukri():
         agent.start()
         agent.login()
 
-        # Direct URL search (pre-filtered for 10 years ETL/DWH experience)
+        # Use dynamic keywords from .env if available to build search target
+        raw_k = os.getenv("JOB_KEYWORDS", "ETL Testing")
+        k_param = raw_k.replace(",", "%2C").replace(" ", "%20")
+        
+        # Build URL dynamically
         search_target = (
-            "https://www.naukri.com/etl-testing-etl-tester-dwh-testing-data-warehouse-testing-"
-            "database-testing-bi-testing-informatica-testing-data-warehouse-etl-testing-report-"
-            "testing-big-data-testing-data-testing-bi-report-testing-jobs"
-            "?k=etl%20testing%2C%20etl%20tester%2C%20dwh%20testing%2C%20data%20warehouse%20testing"
-            "%2C%20database%20testing%2C%20bi%20testing%2C%20informatica%20testing%2C%20data%20"
-            "warehouse%20etl%20testing%2C%20report%20testing%2C%20big%20data%20testing%2C%20data%20"
-            "testing%2C%20bi%20report%20testing&experience=10&nignbevent_src=jobsearchDeskGNB"
+            f"https://www.naukri.com/jobs-in-india?k={k_param}&experience=10"
         )
+        print(f"  -> Naukri Search: {search_target}")
         agent.search_jobs_direct(search_target)
 
     except Exception as e:

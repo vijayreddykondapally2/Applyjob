@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ApplyJob AI{% endblock %}</title>
+    <meta name="description" content="AI-powered multi-portal job application automation platform">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    {% if current_user.is_authenticated %}
+    <nav class="top-nav">
+        <div class="nav-inner">
+            <a href="{{ url_for('dashboard') }}" class="nav-brand">
+                <span class="brand-icon">⚡</span> ApplyJob AI
+            </a>
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <span class="nav-icon">📊</span> Dashboard
+                </a>
+                <a href="{{ url_for('profile_editor') }}" class="nav-link {% if request.endpoint == 'profile_editor' %}active{% endif %}">
+                    <span class="nav-icon">👤</span> Profile
+                </a>
+                <a href="{{ url_for('history') }}" class="nav-link {% if request.endpoint == 'history' %}active{% endif %}">
+                    <span class="nav-icon">📋</span> History
+                </a>
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('admin_panel') }}" class="nav-link {% if request.endpoint == 'admin_panel' %}active{% endif %}">
+                    <span class="nav-icon">🛡️</span> Admin
+                </a>
+                {% endif %}
+            </div>
+            <div class="nav-user">
+                <span class="user-badge">{{ current_user.full_name or current_user.email }}</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-sm btn-ghost">Logout</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-container">
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}" onclick="this.remove()">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <p>ApplyJob AI &copy; {{ now().year if now is defined else '2026' }} — Multi-Portal Job Automation</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

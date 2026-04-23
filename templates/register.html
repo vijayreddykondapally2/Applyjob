@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Register — ApplyJob AI{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">⚡</div>
+            <h1>Create Account</h1>
+            <p>Start automating your job applications today</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" required
+                       placeholder="John Doe" autocomplete="name" autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required
+                       placeholder="you@example.com" autocomplete="email">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required
+                       placeholder="Min 6 characters" autocomplete="new-password" minlength="6">
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required
+                       placeholder="••••••••" autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="register-btn">
+                Create Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+        </div>
+    </div>
+
+    <div class="auth-features">
+        <div class="feature-item">
+            <div class="feature-icon">🔒</div>
+            <h3>Secure</h3>
+            <p>Passwords are hashed with bcrypt — your data stays safe</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">🚀</div>
+            <h3>Instant Setup</h3>
+            <p>Add your portal credentials and start applying in minutes</p>
+        </div>
+        <div class="feature-item">
+            <div class="feature-icon">📈</div>
+            <h3>Track Progress</h3>
+            <p>Real-time logs, application history & portal stats</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

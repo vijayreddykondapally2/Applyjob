@@ -187,6 +187,13 @@ OUTPUT FORMAT:
             "temperature": 0.1,
             "max_tokens": 300,
         }
+        
+        # Safety check: Truncate if user content is too large for Groq TPM (Limit ~6000 tokens)
+        user_content = payload["messages"][1]["content"]
+        if len(user_content) > 12000:
+            payload["messages"][1]["content"] = user_content[:12000] + "... [TRUNCATED]"
+            print(f"  [AI] Warning: Truncated large prompt from {len(user_content)} to 12000 chars.")
+
         req = urllib.request.Request(
             "https://api.groq.com/openai/v1/chat/completions",
             data=json.dumps(payload).encode("utf-8"),

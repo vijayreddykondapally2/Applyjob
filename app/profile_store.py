@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any, Dict
+import os
 
 
-PROFILE_PATH = Path("data/profile.json")
+PROFILE_PATH = Path(os.getenv("APPLYJOB_PROFILE_PATH", "data/profile.json"))
 
 
 def ensure_profile_dir() -> None:

@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ApplyJob AI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-subtitle">Welcome back, {{ current_user.full_name or current_user.email }}!</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card stat-total">
+            <div class="stat-number" id="stat-total">{{ stats.get('total', 0) }}</div>
+            <div class="stat-label">Total Applied</div>
+            <div class="stat-icon">📄</div>
+        </div>
+        <div class="stat-card stat-linkedin">
+            <div class="stat-number">{{ stats.get('LinkedIn', stats.get('linkedin', 0)) }}</div>
+            <div class="stat-label">LinkedIn</div>
+            <div class="stat-icon">💼</div>
+        </div>
+        <div class="stat-card stat-naukri">
+            <div class="stat-number">{{ stats.get('Naukri', stats.get('naukri', 0)) }}</div>
+            <div class="stat-label">Naukri</div>
+            <div class="stat-icon">🔍</div>
+        </div>
+        <div class="stat-card stat-foundit">
+            <div class="stat-number">{{ stats.get('Foundit', stats.get('foundit', 0)) }}</div>
+            <div class="stat-label">Foundit</div>
+            <div class="stat-icon">🌐</div>
+        </div>
+        <div class="stat-card stat-monster">
+            <div class="stat-number">{{ stats.get('Monster', stats.get('monster', 0)) }}</div>
+            <div class="stat-label">Monster</div>
+            <div class="stat-icon">👾</div>
+        </div>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="card control-panel">
+        <div class="control-header">
+            <div>
+                <h2>Automation Control</h2>
+                <p class="text-muted">Select portals and launch your agents</p>
+            </div>
+            <div id="status-badge" class="status-badge {{ 'status-running' if status.is_running else 'status-idle' }}">
+                <span class="status-dot"></span>
+                <span id="status-text">{{ 'Running' if status.is_running else 'Ready' }}</span>
+            </div>
+        </div>
+
+        <!-- Portal Selection -->
+        <div class="portal-selector">
+            <label class="portal-check">
+                <input type="checkbox" id="portal-linkedin" value="linkedin" checked>
+                <span class="portal-chip portal-linkedin-chip">
+                    <span class="chip-icon">💼</span> LinkedIn
+                </span>
+            </label>
+            <label class="portal-check">
+                <input type="checkbox" id="portal-naukri" value="naukri" checked>
+                <span class="portal-chip portal-naukri-chip">
+                    <span class="chip-icon">🔍</span> Naukri
+                </span>
+            </label>
+            <label class="portal-check">
+                <input type="checkbox" id="portal-foundit" value="foundit" checked>
+                <span class="portal-chip portal-foundit-chip">
+                    <span class="chip-icon">🌐</span> Foundit
+                </span>
+            </label>
+            <label class="portal-check">
+                <input type="checkbox" id="portal-monster" value="monster" checked>
+                <span class="portal-chip portal-monster-chip">
+                    <span class="chip-icon">👾</span> Monster
+                </span>
+            </label>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="control-actions">
+            <button id="run-btn" class="btn btn-primary btn-lg" onclick="launchAgents()"
+                    {{ 'style=display:none' if status.is_running }}>
+                🚀 Launch Agents
+            </button>
+            <button id="stop-btn" class="btn btn-danger btn-lg" onclick="stopAgents()"
+                    {{ 'style=display:none' if not status.is_running }}>
+                ⏹ Stop All Agents
+            </button>
+        </div>
+
+        <!-- Search Config Summary -->
+        <div class="config-summary">
+            <div class="config-item">
+                <span class="config-label">Keywords</span>
+                <span class="config-value">{{ settings.get('job_keywords', 'Not set') }}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Location</span>
+                <span class="config-value">{{ settings.get('job_location', 'Not set') }}</span>
+            </div>
+            <div class="config-item">
+                <span class="config-label">Max Jobs</span>
+                <span class="config-value">{{ settings.get('max_jobs', 25) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-column: Logs + Recent Activity -->
+    <div class="dashboard-grid">
+        <!-- Live Logs -->
+        <div class="card">
+            <h3 class="card-title">📡 Live Logs</h3>
+            <div class="log-scroll" id="log-view">
+                {% if status.logs %}
+                    {% for line in status.logs %}
+                    <div class="log-line">{{ line }}</div>
+                    {% endfor %}
+                {% else %}
+                    <div class="log-line log-empty">Waiting for agent output...</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Applications -->
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 class="card-title" style="margin:0;">📋 Recent Applications</h3>
+                <a href="{{ url_for('history') }}" class="btn btn-sm btn-ghost">View All →</a>
+            </div>
+            <div class="recent-list">
+                {% for app in recent_apps %}
+                <div class="recent-item">
+                    <div class="recent-portal">
+                        <span class="portal-badge portal-{{ app.portal|lower }}">{{ app.portal }}</span>
+                    </div>
+                    <div class="recent-info">
+                        <div class="recent-title">{{ app.title or 'Untitled' }}</div>
+                        <div class="recent-company">{{ app.company or 'Unknown' }}</div>
+                    </div>
+                    <div class="recent-status">✓</div>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <p>No applications yet. Launch agents to start!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function getSelectedPortals() {
+        const portals = [];
+        document.querySelectorAll('.portal-check input:checked').forEach(cb => {
+            portals.push(cb.value);
+        });
+        return portals;
+    }
+
+    function launchAgents() {
+        const portals = getSelectedPortals();
+        if (portals.length === 0) {
+            alert('Select at least one portal!');
+            return;
+        }
+
+        const btn = document.getElementById('run-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Starting...';
+
+        fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ portals })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'started' || data.status === 'already_running') {
+                document.getElementById('run-btn').style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'inline-flex';
+                updateStatusBadge(true);
+            } else {
+                alert('Error: ' + (data.message || data.status));
+                btn.disabled = false;
+                btn.textContent = '🚀 Launch Agents';
+            }
+        })
+        .catch(err => {
+            alert('Network error: ' + err);
+            btn.disabled = false;
+            btn.textContent = '🚀 Launch Agents';
+        });
+    }
+
+    function stopAgents() {
+        fetch('/api/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('run-btn').style.display = 'inline-flex';
+            document.getElementById('stop-btn').style.display = 'none';
+            document.getElementById('run-btn').disabled = false;
+            document.getElementById('run-btn').textContent = '🚀 Launch Agents';
+            updateStatusBadge(false);
+        });
+    }
+
+    function updateStatusBadge(isRunning) {
+        const badge = document.getElementById('status-badge');
+        const text = document.getElementById('status-text');
+        if (isRunning) {
+            badge.className = 'status-badge status-running';
+            text.textContent = 'Running';
+        } else {
+            badge.className = 'status-badge status-idle';
+            text.textContent = 'Ready';
+        }
+    }
+
+    function pollStatus() {
+        fetch('/api/status')
+            .then(r => r.json())
+            .then(data => {
+                // Update logs
+                const logView = document.getElementById('log-view');
+                if (data.logs && data.logs.length > 0) {
+                    logView.innerHTML = data.logs.map(line =>
+                        `<div class="log-line">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
+                    ).join('');
+                    logView.scrollTop = logView.scrollHeight;
+                }
+
+                // Update status
+                updateStatusBadge(data.is_running);
+                if (data.is_running) {
+                    document.getElementById('run-btn').style.display = 'none';
+                    document.getElementById('stop-btn').style.display = 'inline-flex';
+                } else {
+                    document.getElementById('run-btn').style.display = 'inline-flex';
+                    document.getElementById('run-btn').disabled = false;
+                    document.getElementById('run-btn').textContent = '🚀 Launch Agents';
+                    document.getElementById('stop-btn').style.display = 'none';
+                }
+            })
+            .catch(() => {});
+    }
+
+    setInterval(pollStatus, 2500);
+</script>
+{% endblock %}

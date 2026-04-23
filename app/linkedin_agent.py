@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import time
+import random
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Set
@@ -480,6 +482,16 @@ class LinkedInApplyAgent:
             # ── Cleanup any dangling modals/toasts, then pace ─────
             self._cleanup_dialogs()
             self.page.wait_for_timeout(1000)
+
+            # --- PACE APPLICATIONS ---
+            # User requested 3-5 min delay between each application to avoid account flags
+            if idx < len(discovered_jobs) - 1:
+                delay_sec = random.randint(180, 300)
+                print(f"\n⏳ Pacing: Waiting {delay_sec // 60}m {delay_sec % 60}s before next job...")
+                for s in range(delay_sec, 0, -10):
+                    if s % 60 == 0:
+                        print(f"  ({s // 60}m remaining...)")
+                    time.sleep(min(s, 10))
 
         return results
 
@@ -1490,6 +1502,15 @@ class LinkedInApplyAgent:
         merged = previous + [asdict(r) for r in results]
         with open(path, "w", encoding="utf-8") as f:
             json.dump(merged, f, indent=2)
+            
+        # Also log to unified history for the UI
+        try:
+            from app.utils import log_application
+            for r in results:
+                if r.status == "submitted":
+                    log_application("LinkedIn", r.job_title, r.company, r.url, "submitted")
+        except Exception:
+            pass
 
     @staticmethod
     def _load_historical_results(path: str = "data/results.json") -> List[Dict[str, Any]]:

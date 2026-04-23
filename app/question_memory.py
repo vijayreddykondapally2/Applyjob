@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Dict, List
 
 
-MEMORY_PATH = Path("data/question_memory.json")
+_data_dir = os.getenv("APPLYJOB_DATA_DIR", "data")
+MEMORY_PATH = Path(_data_dir) / "question_memory.json"
 
 
 def _normalize(text: str) -> str:

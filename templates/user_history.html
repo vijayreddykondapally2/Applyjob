@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Application History — ApplyJob AI{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px;">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Application History</h1>
+            <p class="page-subtitle">Track every job application across all portals</p>
+        </div>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-grid stats-compact">
+        <div class="stat-card stat-total">
+            <div class="stat-number">{{ stats.get('total', 0) }}</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card stat-linkedin">
+            <div class="stat-number">{{ stats.get('LinkedIn', stats.get('linkedin', 0)) }}</div>
+            <div class="stat-label">LinkedIn</div>
+        </div>
+        <div class="stat-card stat-naukri">
+            <div class="stat-number">{{ stats.get('Naukri', stats.get('naukri', 0)) }}</div>
+            <div class="stat-label">Naukri</div>
+        </div>
+        <div class="stat-card stat-foundit">
+            <div class="stat-number">{{ stats.get('Foundit', stats.get('foundit', 0)) }}</div>
+            <div class="stat-label">Foundit</div>
+        </div>
+        <div class="stat-card stat-monster">
+            <div class="stat-number">{{ stats.get('Monster', stats.get('monster', 0)) }}</div>
+            <div class="stat-label">Monster</div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="card filter-bar">
+        <div class="filter-group">
+            <label>Filter by Portal:</label>
+            <div class="filter-chips">
+                <button class="filter-chip active" onclick="filterTable('all', this)">All</button>
+                <button class="filter-chip" onclick="filterTable('linkedin', this)">LinkedIn</button>
+                <button class="filter-chip" onclick="filterTable('naukri', this)">Naukri</button>
+                <button class="filter-chip" onclick="filterTable('foundit', this)">Foundit</button>
+                <button class="filter-chip" onclick="filterTable('monster', this)">Monster</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Table -->
+    <div class="card table-card">
+        <table id="history-table">
+            <thead>
+                <tr>
+                    <th>Date & Time</th>
+                    <th>Portal</th>
+                    <th>Job Title</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in apps %}
+                <tr data-portal="{{ app.portal|lower }}">
+                    <td class="col-date">{{ app.applied_at }}</td>
+                    <td>
+                        <span class="portal-badge portal-{{ app.portal|lower }}">
+                            {{ app.portal }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if app.url %}
+                        <a href="{{ app.url }}" target="_blank" class="job-link">{{ app.title or 'Untitled' }}</a>
+                        {% else %}
+                        {{ app.title or 'Untitled' }}
+                        {% endif %}
+                    </td>
+                    <td>{{ app.company or '—' }}</td>
+                    <td>
+                        <span class="status-pill status-{{ app.status|lower }}">{{ app.status }}</span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" class="empty-cell">
+                        No applications recorded yet. Launch agents from the Dashboard to start applying!
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterTable(portal, btn) {
+        // Update active chip
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Filter rows
+        const rows = document.querySelectorAll('#history-table tbody tr[data-portal]');
+        rows.forEach(row => {
+            if (portal === 'all' || row.dataset.portal === portal) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -58,7 +58,8 @@ def run() -> None:
     strict_keywords       = _split_csv(os.getenv("STRICT_KEYWORDS", "etl,data quality,qa,testing"))
     max_pages             = int_env(os.getenv("MAX_PAGES", "5"), 5)
 
-    search_keyword_list = _split_csv(keywords) or [keywords.strip()]
+    # Use all keywords in a single search bar entry for better filtering
+    search_keyword_list = [keywords.strip()]
 
     if not email or not password:
         raise RuntimeError("Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD in .env before running.")
@@ -224,4 +225,9 @@ def run() -> None:
             raise
         finally:
             if keep_browser_open and not headless and not prompted_close and not stopped_by_user:
-                input("\nAll done. Press Enter to close browser…")
+                if os.getenv("PARALLEL_MODE") == "true":
+                    print(f"\n[Parallel] LinkedIn task finished. Terminal input disabled in parallel mode. Browser will stay open for a few minutes...")
+                    time.sleep(300) 
+                else:
+                    input("\nAll done. Press Enter to close browser")
+

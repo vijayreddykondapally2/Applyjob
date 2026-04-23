@@ -24,15 +24,14 @@ def run_monster():
         agent.start()
         agent.login()
         
-        keywords = [
-            "ETL Testing",
-            "ETL Tester",
-            "Data QA",
-            "Data Testing",
-        ]
+        # Use all dynamic keywords in a single search for better narrowing
+        keywords = [os.getenv("JOB_KEYWORDS", "ETL Testing").strip()]
+        
+        env_location = os.getenv("JOB_LOCATION", "Hyderabad")
+        locations = [env_location] if env_location else ["Hyderabad", "Remote"]
         
         for keyword in keywords:
-            for loc in ["Hyderabad", "Remote"]:
+            for loc in locations:
                 try:
                     agent.search_and_apply(keyword, location=loc, max_jobs=25)
                 except Exception as e:

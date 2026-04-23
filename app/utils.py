@@ -2,6 +2,7 @@ import json
 import os
 import time
 from pathlib import Path
+from datetime import datetime
 from typing import Any, Dict
 
 # Default relative paths
@@ -61,7 +62,7 @@ def get_compressed_dom(page, selector: str = "body") -> str:
                         const jobId = el.getAttribute('data-job-id') || el.getAttribute('data-occludable-job-id') || '';
                         if (!text && !id && !jobId && tag !== 'button' && tag !== 'a') return null;
                         return `<${{tag}}${{id}}${{classes}}${{role ? ` role="${{role}}"` : ''}}${{jobId ? ` jobid="${{jobId}}"` : ''}}>${{text}}</${{tag}}>`;
-                    }}).filter(x => x).slice(0, 300).join('\\n');
+                    }}).filter(x => x).slice(0, 80).join('\\n');
                 }}""",
                 selector
             )
@@ -69,6 +70,50 @@ def get_compressed_dom(page, selector: str = "body") -> str:
     except Exception:
         return ""
 
+
+def log_application(portal: str, title: str, company: str, url: str, status: str = "submitted"):
+    """
+    Log a job application. In multi-user mode (APPLYJOB_USER_ID set),
+    writes to the SQLite database. Always writes to the JSON file as fallback.
+    """
+    # ── Multi-user: write to database ─────────────────────────────────────
+    user_id = os.getenv("APPLYJOB_USER_ID", "")
+    if user_id:
+        try:
+            from app.database import log_application as db_log_application
+            db_log_application(int(user_id), portal, title, company, url, status)
+        except Exception:
+            pass  # Fall through to JSON file
+
+    # ── JSON file fallback (always, for backward compatibility) ────────────
+    data_dir = os.getenv("APPLYJOB_DATA_DIR", "data")
+    history_path = Path(data_dir) / "applied_jobs.json"
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    record = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "portal": portal,
+        "title": title,
+        "company": company,
+        "url": url,
+        "status": status
+    }
+    
+    data = []
+    if history_path.exists():
+        try:
+            with open(history_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = []
+            
+    data.append(record)
+    
+    try:
+        with open(history_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
 
 def bool_env(value: str, default: bool = False) -> bool:
     if not value:
