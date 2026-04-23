@@ -501,7 +501,7 @@ class FounditApplyAgent:
                 print(f"  ✓ Clicked '{clicked}' (JS).")
                 print("  -> Waiting for applications to complete...")
                 self._safe_wait(10000)
-                self.jobs_applied += 15
+                self._log_bulk_apply()
                 print(f"  ✓ Batch applied! Total so far: ~{self.jobs_applied}")
                 return True
         except Exception:
@@ -525,7 +525,7 @@ class FounditApplyAgent:
                         print(f"  ✓ Clicked confirm ({sel}).")
                         print("  -> Waiting for applications to complete...")
                         self._safe_wait(10000)
-                        self.jobs_applied += 15
+                        self._log_bulk_apply()
                         print(f"  ✓ Batch applied! Total so far: ~{self.jobs_applied}")
                         return True
             except Exception:
@@ -553,6 +553,15 @@ class FounditApplyAgent:
 
         print("  ! 'Confirm & Apply' not found.")
         return False
+
+    def _log_bulk_apply(self):
+        self.jobs_applied += 15
+        try:
+            from app.utils import log_application
+            url = self.page.url if self.page else "https://foundit.in"
+            log_application("Foundit", "Bulk Apply (15 jobs)", "Multiple Companies", url, "submitted")
+        except Exception:
+            pass
 
     # ─── Next Page ────────────────────────────────────────────────────────
 

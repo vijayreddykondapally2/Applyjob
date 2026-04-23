@@ -294,6 +294,12 @@ class NaukriApplyAgent:
             return
 
         self.jobs_applied += 1
+        try:
+            from app.utils import log_application
+            title = target_page.title() or "Unknown Naukri Job"
+            log_application("Naukri", title, "Unknown Company", self._current_job_url, "submitted")
+        except Exception:
+            pass
         print("  -> Apply clicked. Looking for questionnaire panel...")
 
         # ── STEP 2: Wait for the questionnaire panel to appear ────────────

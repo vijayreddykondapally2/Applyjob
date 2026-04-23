@@ -318,7 +318,7 @@ class MonsterApplyAgent:
                 # No form fields — check if application is complete
                 if page.locator("text='applied'").count() > 0:
                     print("  ✓ Application submitted!")
-                    self.jobs_applied += 1
+                    self._log_job_applied(page)
                     return
                 break
 
@@ -361,14 +361,23 @@ class MonsterApplyAgent:
                 )
                 if success_text.count() > 0:
                     print("  ✓ Application submitted!")
-                    self.jobs_applied += 1
+                    self._log_job_applied(page)
                     return
             except Exception:
                 pass
 
         # If we got here, count it as attempted
-        self.jobs_applied += 1
+        self._log_job_applied(page)
         print("  ✓ Application attempted.")
+
+    def _log_job_applied(self, page: Page):
+        self.jobs_applied += 1
+        try:
+            from app.utils import log_application
+            title = page.title() or "Unknown Monster Job"
+            log_application("Monster", title, "Unknown Company", page.url, "submitted")
+        except Exception:
+            pass
 
     def _fill_form_fields(self, page: Page):
         """Fill visible form fields using profile data."""
