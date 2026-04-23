@@ -48,7 +48,8 @@ COPY . .
 RUN mkdir -p /app/data
 
 # Expose the Web UI port
+# Expose default port
 EXPOSE 5001
 
-# Production: use gunicorn with multiple workers + threads
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "--workers", "4", "--threads", "4", "--timeout", "120", "web_app:app"]
+# Production: use gunicorn with multiple workers + threads. Bind to PORT env var.
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 4 --threads 4 --timeout 120 web_app:app"]
