@@ -83,10 +83,11 @@ class NaukriApplyAgent:
             except Exception:
                 pass
 
-        print("Launching browser for Naukri...")
+        headless = should_run_headless()
+        print(f"Launching browser for Naukri... (headless={headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=should_run_headless(),
+            headless=headless,
             args=["--start-maximized", "--disable-blink-features=AutomationControlled"],
         )
         self.page = self.context.new_page()

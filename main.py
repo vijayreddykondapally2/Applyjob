@@ -5,6 +5,28 @@ import argparse
 import multiprocessing
 from dotenv import load_dotenv
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# CRITICAL: Force headless mode on Linux/Docker/HuggingFace BEFORE any agent
+# code is imported. This ensures the environment variable is set in the parent
+# process memory, which is then inherited by all forked child processes.
+# ═══════════════════════════════════════════════════════════════════════════════
+def _force_headless_if_needed():
+    """Set HEADLESS=true if we detect a non-GUI environment."""
+    is_hf = os.getenv("SPACE_ID") is not None
+    is_linux = sys.platform.startswith("linux")
+    has_display = os.getenv("DISPLAY") is not None
+    is_docker = os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
+    is_root = os.path.expanduser("~") == "/root"
+    
+    if is_hf or is_docker or is_root or (is_linux and not has_display):
+        os.environ["HEADLESS"] = "true"
+        print(f"[MAIN] Auto-detected headless environment "
+              f"(HF={is_hf}, docker={is_docker}, root={is_root}, "
+              f"linux={is_linux}, display={has_display}). Forcing HEADLESS=true.")
+
+_force_headless_if_needed()
+
+
 # Import the run functions from each portal-specific script
 from app.runner import run as run_linkedin
 from naukri_main import run_naukri

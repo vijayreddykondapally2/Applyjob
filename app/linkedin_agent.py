@@ -87,6 +87,7 @@ class LinkedInApplyAgent:
             except Exception:
                 pass
 
+        print(f"Launching browser for LinkedIn... (headless={self.headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=self.user_data_dir,
             headless=self.headless,

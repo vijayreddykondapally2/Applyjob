@@ -119,16 +119,36 @@ def should_run_headless() -> bool:
     """Determine if we should run in headless mode based on environment."""
     import sys
     
+    platform = sys.platform
+    display = os.getenv("DISPLAY")
+    space_id = os.getenv("SPACE_ID")
+    headless_env = os.getenv("HEADLESS", "")
+    is_docker = os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
+    is_root_user = os.path.expanduser("~") == "/root"
+    
+    print(f"[HEADLESS CHECK] platform={platform}, DISPLAY={display}, "
+          f"SPACE_ID={space_id}, HEADLESS={headless_env}, "
+          f"docker={is_docker}, root_user={is_root_user}")
+    
     # Force headless if on Hugging Face
-    if os.getenv("SPACE_ID") is not None:
+    if space_id is not None:
+        print("[HEADLESS CHECK] → HEADLESS=True (HuggingFace Space detected)")
+        return True
+    
+    # Force headless if in a Docker container
+    if is_docker or is_root_user:
+        print("[HEADLESS CHECK] → HEADLESS=True (Docker/container detected)")
         return True
     
     # Force headless if on Linux with no DISPLAY
-    if sys.platform.startswith("linux") and os.getenv("DISPLAY") is None:
+    if platform.startswith("linux") and display is None:
+        print("[HEADLESS CHECK] → HEADLESS=True (Linux without DISPLAY)")
         return True
-        
-    # Otherwise use the HEADLESS env var (defaults to False)
-    return bool_env(os.getenv("HEADLESS", "false"))
+    
+    # Check the explicit HEADLESS env var
+    result = bool_env(headless_env, default=False)
+    print(f"[HEADLESS CHECK] → HEADLESS={result} (from env var)")
+    return result
 
 
 def bool_env(value: str, default: bool = False) -> bool:

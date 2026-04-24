@@ -11,7 +11,7 @@ from app.ai_answerer import AIAnswerer
 from app.job_types import JobCard
 from app.linkedin_agent import LinkedInApplyAgent
 from app.profile_store import prompt_profile_if_missing, PROFILE_PATH
-from app.utils import bool_env, int_env
+from app.utils import bool_env, int_env, should_run_headless
 
 
 def _split_csv(value: str) -> List[str]:
@@ -34,7 +34,7 @@ def run() -> None:
     location = os.getenv("JOB_LOCATION", "India")
     job_search_url        = os.getenv("JOB_SEARCH_URL", "").strip()
     max_jobs              = int_env(os.getenv("MAX_JOBS", "25"), 25)
-    headless              = bool_env(os.getenv("HEADLESS", "false"))
+    headless              = should_run_headless()
     auto_apply            = bool_env(os.getenv("AUTO_APPLY", "true"), default=True)
     keep_browser_open     = bool_env(os.getenv("KEEP_BROWSER_OPEN", "true"), default=True)
     allow_manual_ckpt     = bool_env(os.getenv("ALLOW_MANUAL_CHECKPOINT", "true"), default=True)

@@ -78,10 +78,11 @@ class FounditApplyAgent:
                 pass
 
         time.sleep(1)
-        print("Launching browser for Foundit...")
+        headless = should_run_headless()
+        print(f"Launching browser for Foundit... (headless={headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=should_run_headless(),
+            headless=headless,
             args=["--start-maximized",
                   "--disable-blink-features=AutomationControlled"],
         )
