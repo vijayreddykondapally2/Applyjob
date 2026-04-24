@@ -115,10 +115,26 @@ def log_application(portal: str, title: str, company: str, url: str, status: str
     except Exception:
         pass
 
+def should_run_headless() -> bool:
+    """Determine if we should run in headless mode based on environment."""
+    import sys
+    
+    # Force headless if on Hugging Face
+    if os.getenv("SPACE_ID") is not None:
+        return True
+    
+    # Force headless if on Linux with no DISPLAY
+    if sys.platform.startswith("linux") and os.getenv("DISPLAY") is None:
+        return True
+        
+    # Otherwise use the HEADLESS env var (defaults to False)
+    return bool_env(os.getenv("HEADLESS", "false"))
+
+
 def bool_env(value: str, default: bool = False) -> bool:
     if not value:
         return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def int_env(value: str, default: int) -> int:
@@ -127,4 +143,6 @@ def int_env(value: str, default: int) -> int:
     try:
         return int(value.strip())
     except ValueError:
+        return default
+    except TypeError:
         return default

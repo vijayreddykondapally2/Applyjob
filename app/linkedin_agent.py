@@ -15,7 +15,7 @@ from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwrigh
 from app.ai_answerer import AIAnswerer
 from app.job_types import ApplyResult, JobCard
 from app.question_memory import QuestionMemory
-from app.utils import debug_log, get_compressed_dom
+from app.utils import debug_log, get_compressed_dom, should_run_headless
 
 
 class LinkedInApplyAgent:
@@ -52,7 +52,7 @@ class LinkedInApplyAgent:
         self,
         email: str,
         password: str,
-        headless: bool = False,
+        headless: bool | None = None,
         profile: Dict[str, Any] | None = None,
         auto_apply: bool = True,
         user_data_dir: str = "data/browser-profile",
@@ -60,7 +60,7 @@ class LinkedInApplyAgent:
     ) -> None:
         self.email = email
         self.password = password
-        self.headless = headless
+        self.headless = headless if headless is not None else should_run_headless()
         self.profile = profile or {}
         self.auto_apply = auto_apply
         self.user_data_dir = user_data_dir

@@ -2,6 +2,7 @@ import os
 import time
 import urllib.parse
 from playwright.sync_api import sync_playwright, Page
+from app.utils import should_run_headless
 
 
 class MonsterApplyAgent:
@@ -47,7 +48,7 @@ class MonsterApplyAgent:
         print("Launching browser for Monster.com...")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=(os.getenv("HEADLESS", "false").lower() == "true"),
+            headless=should_run_headless(),
             args=["--start-maximized",
                   "--disable-blink-features=AutomationControlled"],
         )

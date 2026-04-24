@@ -5,6 +5,7 @@ import time
 import urllib.parse
 from datetime import datetime
 from playwright.sync_api import sync_playwright, Page
+from app.utils import should_run_headless
 
 
 # Maximum session duration in seconds (15 minutes)
@@ -80,7 +81,7 @@ class FounditApplyAgent:
         print("Launching browser for Foundit...")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=(os.getenv("HEADLESS", "false").lower() == "true"),
+            headless=should_run_headless(),
             args=["--start-maximized",
                   "--disable-blink-features=AutomationControlled"],
         )

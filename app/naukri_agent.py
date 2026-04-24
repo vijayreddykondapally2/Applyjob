@@ -3,6 +3,7 @@ import json
 import time
 from datetime import datetime
 from playwright.sync_api import sync_playwright, Page, Frame
+from app.utils import should_run_headless
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Selectors for the questionnaire panel that Naukri opens on the RIGHT side
@@ -85,7 +86,7 @@ class NaukriApplyAgent:
         print("Launching browser for Naukri...")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=(os.getenv("HEADLESS", "false").lower() == "true"),
+            headless=should_run_headless(),
             args=["--start-maximized", "--disable-blink-features=AutomationControlled"],
         )
         self.page = self.context.new_page()
