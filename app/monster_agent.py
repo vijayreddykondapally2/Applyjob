@@ -71,94 +71,63 @@ class MonsterApplyAgent:
     # ─── Login ────────────────────────────────────────────────────────────
 
     def login(self):
-        print("Navigating to Monster.com...")
-        self.page.goto("https://www.monster.com/")
-        self.page.wait_for_timeout(4000)
+        print("Navigating to Monster/Foundit Login...")
+        # Monster India redirects to foundit.in
+        self.page.goto("https://www.foundit.in/rio/login/seeker", wait_until="load")
+        self.page.wait_for_timeout(5000)
 
-        # Dismiss cookie banner
+        # Already logged in?
         try:
-            cb = self.page.locator(
-                "button#onetrust-accept-btn-handler, "
-                "button:has-text('Accept'), "
-                "button:has-text('Got it')"
-            ).first
-            if cb.count() > 0 and cb.is_visible():
-                cb.click(timeout=3000)
-                print("  -> Dismissed cookie banner.")
+            if self.page.locator(".profile-icon, .userName, [class*='profile']").count() > 0:
+                print("✓ Already logged into Monster/Foundit.")
+                return
         except Exception:
             pass
 
-        # Check if already logged in
-        logged_in = False
-        for indicator in [
-            "text='Dashboard'",
-            "text='Find Jobs'",
-            "a[href*='/profile']",
-        ]:
-            try:
-                if self.page.locator(indicator).first.count() > 0:
-                    logged_in = True
-                    break
-            except Exception:
-                continue
+        # Dismiss popups
+        try:
+            for sel in ["button:has-text('Okay')", "button:has-text('Accept')", "button:has-text('Got it')"]:
+                btn = self.page.locator(sel).first
+                if btn.is_visible():
+                    btn.click(timeout=3000)
+                    self.page.wait_for_timeout(1000)
+        except: pass
 
-        if logged_in:
-            print("✓ Already logged into Monster.")
-            return
+        print("Clicking 'LinkedIn' button for Social Login...")
+        try:
+            with self.page.expect_popup() as popup_info:
+                self.page.locator("button:has-text('LinkedIn'), [class*='linkedin']").first.click()
+            
+            popup = popup_info.value
+            popup.wait_for_load_state("load")
 
-        # Click Log In
-        print("Clicking 'Log In'...")
-        for sel in [
-            'a[href*="mode=Login"]',
-            'a:has-text("Log in")',
-            'button:has-text("Log in")',
-        ]:
-            try:
-                loc = self.page.locator(sel).first
-                if loc.count() > 0 and loc.is_visible():
-                    loc.click()
-                    break
-            except Exception:
-                continue
+            if "linkedin.com" in popup.url:
+                if popup.locator("#username").count() > 0:
+                    print("  -> Filling LinkedIn credentials in popup...")
+                    email = os.getenv("LINKEDIN_EMAIL", "")
+                    password = os.getenv("LINKEDIN_PASSWORD", "")
+                    popup.fill("#username", email)
+                    popup.fill("#password", password)
+                    popup.click("button[type='submit']")
+                    popup.wait_for_load_state("load")
 
-        self.page.wait_for_timeout(5000)
+                # Handle "Allow"
+                try:
+                    allow_btn = popup.locator("button:has-text('Allow'), button:has-text('Agree & Confirm')").first
+                    if allow_btn.is_visible(timeout=10000):
+                        print("  -> Clicking 'Allow' on LinkedIn permission screen...")
+                        allow_btn.click()
+                except: pass
 
-        email = os.getenv("MONSTER_EMAIL", "")
-        password = os.getenv("MONSTER_PASSWORD", "")
-
-        if email and password:
-            print(f"  -> Entering credentials for {email}...")
-            try:
-                # Fill email
-                email_input = self.page.locator(
-                    "#Input_Email, input[name='email'], "
-                    "input[type='email'], input[placeholder*='email']"
-                ).first
-                email_input.fill(email)
-
-                # Fill password
-                pass_input = self.page.locator(
-                    "#passwordInput, input[type='password'], "
-                    "input[name='password']"
-                ).first
-                pass_input.fill(password)
-
-                # Click submit
-                submit_btn = self.page.locator(
-                    "button.login-btn, button[type='submit'], "
-                    "button:has-text('Log In'), button:has-text('Sign In')"
-                ).first
-                submit_btn.click()
-                self.page.wait_for_timeout(8000)
-                print("✓ Logged in successfully.")
-            except Exception as e:
-                print(f"  ! Login error: {e}")
-                print("  Waiting 30s for manual login...")
-                self.page.wait_for_timeout(30000)
-        else:
-            print("  ! No MONSTER_EMAIL/MONSTER_PASSWORD in .env.")
-            print("  Waiting 30s for manual login...")
-            self.page.wait_for_timeout(30000)
+            print("  -> Waiting for Dashboard...")
+            for _ in range(30):
+                if "/dashboard" in self.page.url or self.page.locator(".profile-icon, .userName").count() > 0:
+                    print("✅ Monster/Foundit Login Successful!")
+                    return
+                self.page.wait_for_timeout(1000)
+            
+        except Exception as e:
+            print(f"❌ Monster Login Error: {e}")
 
     # ─── Search & Apply ───────────────────────────────────────────────────
 
