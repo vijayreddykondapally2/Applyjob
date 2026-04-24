@@ -30,7 +30,9 @@ class MonsterApplyAgent:
 
     def start(self):
         self.playwright = sync_playwright().start()
-        user_data_dir = os.path.abspath("data/monster-browser-profile")
+        user_data_dir = os.path.abspath(
+            os.getenv("MONSTER_PROFILE_DIR", "data/monster-browser-profile")
+        )
         os.makedirs(user_data_dir, exist_ok=True)
 
         # Clean stale locks

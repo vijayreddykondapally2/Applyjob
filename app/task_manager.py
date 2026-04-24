@@ -103,8 +103,15 @@ def get_user_env(user_id: int, portals: List[str]) -> Dict[str, str]:
     env["PARALLEL_MODE"] = "true"
     env["CONTINUOUS_LOOP"] = "true"
     env["KEEP_BROWSER_OPEN"] = "false"
-    env["MANUAL_LOGIN_SUBMIT"] = "true"
-    env["ALLOW_MANUAL_CHECKPOINT"] = "true"
+    
+    # In headless mode, the agent MUST auto-click buttons (no human present).
+    # MANUAL_LOGIN_SUBMIT=true means "wait for human to click Submit" — fatal in headless.
+    if env.get("HEADLESS") == "true":
+        env["MANUAL_LOGIN_SUBMIT"] = "false"
+        env["ALLOW_MANUAL_CHECKPOINT"] = "false"
+    else:
+        env["MANUAL_LOGIN_SUBMIT"] = "true"
+        env["ALLOW_MANUAL_CHECKPOINT"] = "true"
 
     return env
 

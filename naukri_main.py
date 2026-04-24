@@ -28,7 +28,7 @@ def run_naukri():
             ai_answerer = AIAnswerer(
                 enabled=True,
                 api_key=groq_api_key,
-                model="llama-3.1-8b-instant",
+                model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
                 full_profile=profile,
             )
             print("AI Answerer enabled (Groq).")
@@ -46,9 +46,10 @@ def run_naukri():
         raw_k = os.getenv("JOB_KEYWORDS", "ETL Testing")
         k_param = raw_k.replace(",", "%2C").replace(" ", "%20")
         
-        # Build URL dynamically
+        # Build URL dynamically — use experience from profile
+        exp = profile.get("years_experience", "10")
         search_target = (
-            f"https://www.naukri.com/jobs-in-india?k={k_param}&experience=10"
+            f"https://www.naukri.com/jobs-in-india?k={k_param}&experience={exp}"
         )
         print(f"  -> Naukri Search: {search_target}")
         agent.search_jobs_direct(search_target)

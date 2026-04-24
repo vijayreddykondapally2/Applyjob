@@ -173,8 +173,19 @@ class NaukriApplyAgent:
         else:
             print("No credentials found in .env – please log in manually.")
 
-        print("Waiting 30 seconds for manual login / OTP if needed...")
-        self.page.wait_for_timeout(30000)
+        # Wait and verify login succeeded
+        print("Waiting for Naukri login to complete...")
+        for attempt in range(20):  # 20 * 3s = 60s max
+            self.page.wait_for_timeout(3000)
+            current_url = self.page.url.lower()
+            if "login" not in current_url and "nlogin" not in current_url:
+                print(f"✓ Naukri login successful! (URL: {self.page.url})")
+                return
+            if attempt % 5 == 4:
+                print(f"  Still waiting for Naukri login... ({(attempt+1)*3}s)")
+        
+        print(f"⚠ Naukri login may have failed. Current URL: {self.page.url}")
+        print("  Continuing anyway — agent will try to work with current session.")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Job search & loop
