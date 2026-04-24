@@ -192,72 +192,8 @@ class FounditApplyAgent:
 
         except Exception as e:
             print(f"❌ Foundit Login Error: {e}")
-            "a:has-text('Login')",
-        ]:
-            try:
-                loc = self.page.locator(sel).first
-                if loc.count() > 0 and loc.is_visible():
-                    loc.click(force=True)
-                    print(f"  -> Clicked: {sel}")
-                    break
-            except Exception:
-                continue
 
-        self._safe_wait(3000)
-
-        # Fill mobile / email
-        mobile = os.getenv("FOUNDIT_MOBILE", "")
-        email = os.getenv("FOUNDIT_EMAIL", "")
-        login_id = mobile if mobile else email
-
-        if login_id:
-            print(f"Entering login ID: {login_id}...")
-            for sel in [
-                "input[placeholder*='Mobile']",
-                "input[placeholder*='Email']",
-                "input[type='email']",
-                "input[type='text']",
-                "input[name='signInName']",
-            ]:
-                try:
-                    loc = self.page.locator(sel).first
-                    if loc.count() > 0 and loc.is_visible():
-                        loc.fill(login_id)
-                        print(f"  -> Filled: {sel}")
-                        break
-                except Exception:
-                    continue
-
-            # Submit to trigger OTP
-            for sel in [
-                "button[type='submit']",
-                "button:has-text('Next')",
-                "button:has-text('Continue')",
-                "button:has-text('Login')",
-            ]:
-                try:
-                    btn = self.page.locator(sel).first
-                    if btn.count() > 0 and btn.is_visible():
-                        btn.click(force=True)
-                        print(f"  -> Submitted: {sel}")
-                        break
-                except Exception:
-                    continue
-
-        # Wait for OTP
-        print("\n" + "=" * 50)
-        print("  OTP sent. Please enter it in the browser.")
-        print("  Waiting 60 seconds...")
-        print("=" * 50 + "\n")
-        self._safe_wait(60000)
-
-        # Go back to homepage
-        print("Returning to Foundit homepage...")
-        self.page.goto("https://www.foundit.in/")
-        self._safe_wait(5000)
-
-        self._session_start = time.time()
-        print(f"⏱  Session timer started — {MAX_SESSION_SECONDS // 60} min cap.\n")
+    # ─── Bulk Apply (main entry) ──────────────────────────────────────────
 
     # ─── Bulk Apply (main entry) ──────────────────────────────────────────
 
