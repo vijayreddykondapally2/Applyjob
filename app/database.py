@@ -23,15 +23,23 @@ import bcrypt
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+from psycopg2.pool import ThreadedConnectionPool
+
 # Configuration: Use DATABASE_URL for Postgres (Supabase), otherwise fallback to SQLite
 DB_URL = os.getenv("DATABASE_URL")
 DB_PATH = Path(os.getenv("APPLYJOB_DB", "data/applyjob.db"))
 
+_pg_pool = None
 
 def _ensure_db_dir():
     if not DB_URL:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+def _init_pg_pool():
+    global _pg_pool
+    if _pg_pool is None and DB_URL:
+        # options="-c search_path=applyai" ensures all connections default to our schema
+        _pg_pool = ThreadedConnectionPool(1, 20, DB_URL, connect_timeout=10, options="-c search_path=applyai")
 
 @contextmanager
 def get_db():
@@ -43,13 +51,8 @@ def get_db():
     
     try:
         if is_postgres:
-            # Connect to PostgreSQL (Supabase)
-            conn = psycopg2.connect(DB_URL, connect_timeout=10)
-            with conn.cursor() as cur:
-                # Create the schema and set it as the default for this connection
-                cur.execute("CREATE SCHEMA IF NOT EXISTS applyai")
-                cur.execute("SET search_path TO applyai")
-            conn.commit()
+            _init_pg_pool()
+            conn = _pg_pool.getconn()
         else:
             # Connect to local SQLite
             conn = sqlite3.connect(str(DB_PATH), timeout=10)
@@ -65,7 +68,10 @@ def get_db():
         raise e
     finally:
         if conn:
-            conn.close()
+            if is_postgres:
+                _pg_pool.putconn(conn)
+            else:
+                conn.close()
 
 
 def _get_cursor(conn):
@@ -92,6 +98,13 @@ def init_db():
         cur = conn.cursor()
         print("🛠️ Starting Database Initialization...")
         
+        if is_postgres:
+            try:
+                cur.execute("CREATE SCHEMA IF NOT EXISTS applyai")
+                print("✅ Schema check/creation: applyai")
+            except Exception as e:
+                print(f"⚠️ Warning on schema creation: {e}")
+
         queries = [
             f"""CREATE TABLE IF NOT EXISTS users (
                 id          {PK_SERIAL},
