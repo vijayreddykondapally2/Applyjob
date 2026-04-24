@@ -64,6 +64,7 @@
                 <label class="portal-check">
                     <input type="checkbox" id="portal-linkedin" value="linkedin" checked>
                     <span class="portal-chip portal-linkedin-chip">
+                        <span class="status-dot-mini" id="dot-linkedin"></span>
                         <span class="chip-icon">💼</span> LinkedIn
                     </span>
                 </label>
@@ -74,6 +75,7 @@
                 <label class="portal-check">
                     <input type="checkbox" id="portal-naukri" value="naukri" checked>
                     <span class="portal-chip portal-naukri-chip">
+                        <span class="status-dot-mini" id="dot-naukri"></span>
                         <span class="chip-icon">🔍</span> Naukri
                     </span>
                 </label>
@@ -84,6 +86,7 @@
                 <label class="portal-check">
                     <input type="checkbox" id="portal-foundit" value="foundit" checked>
                     <span class="portal-chip portal-foundit-chip">
+                        <span class="status-dot-mini" id="dot-foundit"></span>
                         <span class="chip-icon">🌐</span> Foundit
                     </span>
                 </label>
@@ -94,6 +97,7 @@
                 <label class="portal-check">
                     <input type="checkbox" id="portal-monster" value="monster" checked>
                     <span class="portal-chip portal-monster-chip">
+                        <span class="status-dot-mini" id="dot-monster"></span>
                         <span class="chip-icon">👾</span> Monster
                     </span>
                 </label>
@@ -119,6 +123,27 @@
         .relaunch-btn:hover {
             background: #10b981;
             color: white;
+        }
+        
+        /* Mini Status Dots */
+        .status-dot-mini {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4b5563; /* Grey when idle */
+            margin-right: 8px;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        .status-dot-mini.active {
+            background-color: #10b981; /* Green when active */
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
         </style>
 
@@ -379,6 +404,19 @@
 
                 // Update status
                 updateStatusBadge(data.is_running);
+                
+                // Update Individual Portal Dots
+                const activePortals = data.active_runs || [];
+                ['linkedin', 'naukri', 'foundit', 'monster'].forEach(p => {
+                    const dot = document.getElementById(`dot-${p}`);
+                    if (dot) {
+                        if (activePortals.includes(p)) {
+                            dot.classList.add('active');
+                        } else {
+                            dot.classList.remove('active');
+                        }
+                    }
+                });
                 const runBtn = document.getElementById('run-btn');
                 const stopBtn = document.getElementById('stop-btn');
                 

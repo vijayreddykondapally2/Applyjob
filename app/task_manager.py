@@ -235,11 +235,28 @@ def get_user_status(user_id: int) -> Dict[str, Any]:
     recent_apps = get_applications(user_id, limit=1)
     latest_app = recent_apps[0] if recent_apps else None
 
+    # Flatten active portals into a single list for the UI
+    active_runs = get_active_runs(user_id)
+    active_portal_names = []
+    for run in active_runs:
+        portals_val = run.get("portals", "")
+        if isinstance(portals_val, str):
+            if portals_val.startswith("["): # JSON array
+                try:
+                    p_list = json.loads(portals_val)
+                    active_portal_names.extend([p.lower() for p in p_list])
+                except: pass
+            else: # Comma separated
+                p_list = portals_val.split(",")
+                active_portal_names.extend([p.strip().lower() for p in p_list if p.strip()])
+        elif isinstance(portals_val, list):
+            active_portal_names.extend([p.lower() for p in portals_val])
+
     return {
         "is_running": is_running,
         "active_run_id": active_run_id,
         "logs": log_lines,
-        "active_runs": get_active_runs(user_id),
+        "active_runs": list(set(active_portal_names)), # Unique list
         "stats": stats,
         "latest_app": latest_app,
     }
