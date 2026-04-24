@@ -114,6 +114,11 @@ class LinkedInApplyAgent:
         manual_timeout_seconds: int = 180,
         manual_login_submit: bool = False,
     ) -> None:
+        # Failsafe: if we are headless, we MUST auto-submit. No exceptions.
+        if should_run_headless():
+            manual_login_submit = False
+            allow_manual_checkpoint = False
+            
         assert self.page is not None
         self.page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded")
         self.page.wait_for_timeout(1500)
