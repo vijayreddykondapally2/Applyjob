@@ -80,7 +80,7 @@ class FounditApplyAgent:
         print("Launching browser for Foundit...")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=False,
+            headless=(os.getenv("HEADLESS", "false").lower() == "true"),
             args=["--start-maximized",
                   "--disable-blink-features=AutomationControlled"],
         )
