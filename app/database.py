@@ -141,7 +141,15 @@ def init_db():
         ]
         
         for q in queries:
-            cur.execute(q)
+            try:
+                cur.execute(q)
+            except (psycopg2.errors.UniqueViolation, psycopg2.errors.DuplicateTable, psycopg2.errors.DuplicateObject):
+                # This happens if another worker is initializing at the same time; we can safely ignore it.
+                conn.rollback()
+            except Exception as e:
+                # For other errors, we still want to know
+                print(f"⚠️ Warning during table creation: {e}")
+                conn.rollback()
         cur.close()
 
 
