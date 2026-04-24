@@ -37,9 +37,12 @@ def run() -> None:
     headless              = should_run_headless()
     auto_apply            = bool_env(os.getenv("AUTO_APPLY", "true"), default=True)
     keep_browser_open     = bool_env(os.getenv("KEEP_BROWSER_OPEN", "true"), default=True)
-    allow_manual_ckpt     = bool_env(os.getenv("ALLOW_MANUAL_CHECKPOINT", "true"), default=True)
-    manual_ckpt_timeout   = int_env(os.getenv("MANUAL_CHECKPOINT_TIMEOUT", "300"), 300)
     manual_login_submit   = bool_env(os.getenv("MANUAL_LOGIN_SUBMIT", "true"), default=True)
+    
+    # CRITICAL: In headless mode, we MUST auto-submit. No human can click the button.
+    if headless:
+        manual_login_submit = False
+        allow_manual_ckpt = False
     user_data_dir         = os.getenv("BROWSER_PROFILE_DIR", "data/browser-profile").strip() or "data/browser-profile"
     enable_ai             = bool_env(os.getenv("ENABLE_AI_ANSWERING", "true"), default=True)
     groq_api_key          = os.getenv("GROQ_API_KEY", "").strip()

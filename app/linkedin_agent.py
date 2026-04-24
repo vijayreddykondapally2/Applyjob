@@ -110,9 +110,9 @@ class LinkedInApplyAgent:
 
     def login(
         self,
-        allow_manual_checkpoint: bool = True,
+        allow_manual_checkpoint: bool = False,
         manual_timeout_seconds: int = 180,
-        manual_login_submit: bool = True,
+        manual_login_submit: bool = False,
     ) -> None:
         assert self.page is not None
         self.page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded")
@@ -163,7 +163,7 @@ class LinkedInApplyAgent:
             self.page.wait_for_timeout(step)
             waited_ms += step
             if waited_ms % 30000 == 0:
-                print(f"Still waiting for login… ({waited_ms // 1000}s)")
+                print(f"Still waiting for login… ({waited_ms // 1000}s) | URL: {self.page.url}")
         raise RuntimeError(f"Login timeout after {timeout_seconds}s.")
 
     # ═══════════════════════════════════════════════════════════════

@@ -329,7 +329,13 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ portals })
         })
-        .then(r => r.json())
+        .then(r => {
+            const contentType = r.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                return r.json();
+            }
+            throw new Error("Server returned HTML (likely session timeout). Please refresh the page.");
+        })
         .then(data => {
             if (data.status === 'started' || data.status === 'already_running') {
                 updateStatusBadge(true);
@@ -340,7 +346,8 @@
             }
         })
         .catch(err => {
-            alert('Network error: ' + err);
+            console.error('Launch error:', err);
+            alert('Error: ' + err.message);
             btn.disabled = false;
             btn.textContent = '🚀 Launch Agents';
         });
@@ -386,8 +393,16 @@
 
     function pollStatus() {
         fetch('/api/status')
-            .then(r => r.json())
+            .then(r => {
+                const contentType = r.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    return r.json();
+                }
+                // Silently stop if we get HTML (session expired)
+                return null;
+            })
             .then(data => {
+                if (!data) return;
                 // Update logs
                 const logView = document.getElementById('log-view');
                 if (data.logs && data.logs.length > 0) {

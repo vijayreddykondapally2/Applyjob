@@ -20,6 +20,10 @@ def _force_headless_if_needed():
     
     if is_hf or is_docker or is_root or (is_linux and not has_display):
         os.environ["HEADLESS"] = "true"
+        # Also force auto-submit in headless mode
+        os.environ["MANUAL_LOGIN_SUBMIT"] = "false"
+        os.environ["ALLOW_MANUAL_CHECKPOINT"] = "false"
+        print(">>> NUCLEAR HEADLESS ENFORCEMENT ACTIVE <<<")
         print(f"[MAIN] Auto-detected headless environment "
               f"(HF={is_hf}, docker={is_docker}, root={is_root}, "
               f"linux={is_linux}, display={has_display}). Forcing HEADLESS=true.")

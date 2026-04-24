@@ -41,6 +41,14 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "applyjob-super-secret-key-change-in-prod")
 
+# Session configuration for better persistence on proxies (HuggingFace)
+app.config.update(
+    SESSION_COOKIE_SECURE=True if os.getenv("SPACE_ID") else False,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=604800, # 1 week
+)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Flask-Login setup
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -50,6 +58,19 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message_category = "info"
 
+
+@app.errorhandler(404)
+def not_found_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({"status": "error", "message": "API endpoint not found"}), 404
+    return render_template('base.html', error="Page not found"), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    print(f"❌ SERVER ERROR: {error}")
+    if request.path.startswith('/api/'):
+        return jsonify({"status": "error", "message": "Internal server error"}), 500
+    return render_template('base.html', error="Internal server error"), 500
 
 class User(UserMixin):
     def __init__(self, user_data: dict):
@@ -211,7 +232,9 @@ def profile_editor():
             if "resume_path" in old_profile:
                 profile_fields["resume_path"] = old_profile["resume_path"]
 
-        print(f"DEBUG: Received profile fields to save for user {current_user.id}: {list(profile_fields.keys())}")
+        print(f"DEBUG: Saving profile for user {current_user.id}. Fields: {list(profile_fields.keys())}")
+        if not profile_fields:
+            print("⚠️ WARNING: Received empty profile fields. Check form submission.")
         
         try:
             save_profile(current_user.id, profile_fields)
