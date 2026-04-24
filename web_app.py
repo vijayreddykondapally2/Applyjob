@@ -15,7 +15,7 @@ import json
 from datetime import datetime
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session
+from flask import Flask, render_template, request, redirect, url_for, jsonify, flash, session, send_file
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 from app.database import (
@@ -152,6 +152,18 @@ def dashboard():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 from werkzeug.utils import secure_filename
+
+@app.route("/view-resume")
+@login_required
+def view_resume():
+    from app.database import get_profile
+    profile = get_profile(current_user.id)
+    resume_path = profile.get("resume_path")
+    if not resume_path or not os.path.exists(resume_path):
+        flash("No resume found.", "warning")
+        return redirect(url_for("profile_editor"))
+    
+    return send_file(resume_path)
 
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
