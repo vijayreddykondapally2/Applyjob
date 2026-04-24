@@ -298,10 +298,11 @@
             method: 'POST',
             body: formData
         }).then(r => {
-            if (r.ok) {
+            const contentType = r.headers.get("content-type");
+            if (r.ok && contentType && contentType.includes("application/json")) {
                 alert('Settings saved successfully!');
-            } else {
-                alert('Failed to save settings.');
+            } else if (!r.ok) {
+                alert('Failed to save settings. Session may have expired.');
             }
         });
     }
@@ -367,7 +368,13 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
         })
-        .then(r => r.json())
+        .then(r => {
+            const contentType = r.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                return r.json();
+            }
+            return null;
+        })
         .then(data => {
             document.getElementById('run-btn').style.display = 'inline-flex';
             document.getElementById('stop-btn').style.display = 'none';
