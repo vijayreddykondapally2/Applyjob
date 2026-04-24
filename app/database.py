@@ -275,9 +275,13 @@ def get_profile(user_id: int) -> Dict[str, Any]:
         cur.close()
     if row:
         try:
-            return json.loads(row["profile_json"])
-        except json.JSONDecodeError:
+            p = json.loads(row["profile_json"])
+            print(f"DEBUG: Loaded profile for user {user_id} with {len(p)} fields.")
+            return p
+        except json.JSONDecodeError as e:
+            print(f"❌ ERROR: JSON decode failed for user {user_id} profile: {e}")
             return {}
+    print(f"DEBUG: No profile found for user {user_id}")
     return {}
 
 

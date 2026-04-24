@@ -199,12 +199,30 @@ def profile_editor():
             if "resume_path" in old_profile:
                 profile_fields["resume_path"] = old_profile["resume_path"]
 
-        save_profile(current_user.id, profile_fields)
-        save_credentials_bulk(current_user.id, creds)
-        if settings_data:
-            save_settings(current_user.id, settings_data)
+        print(f"DEBUG: Received profile fields to save for user {current_user.id}: {list(profile_fields.keys())}")
+        
+        try:
+            save_profile(current_user.id, profile_fields)
+            save_credentials_bulk(current_user.id, creds)
+            if settings_data:
+                save_settings(current_user.id, settings_data)
+            
+            # Update the user's full name in the main users table too for consistency
+            if "full_name" in profile_fields:
+                from app.database import get_db
+                with get_db() as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "UPDATE users SET full_name = %s WHERE id = %s" if DB_URL else
+                        "UPDATE users SET full_name = ? WHERE id = ?",
+                        (profile_fields["full_name"], current_user.id)
+                    )
+            
+            flash(f"Profile for {profile_fields.get('full_name', 'User')} saved successfully!", "success")
+        except Exception as e:
+            print(f"❌ ERROR saving profile: {e}")
+            flash(f"Error saving profile: {e}", "danger")
 
-        flash("Profile and settings saved!", "success")
         return redirect(url_for("profile_editor"))
 
     profile = get_profile(current_user.id)
