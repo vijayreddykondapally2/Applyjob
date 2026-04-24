@@ -65,19 +65,7 @@ def run() -> None:
         raise RuntimeError("Set LINKEDIN_EMAIL and LINKEDIN_PASSWORD in .env before running.")
 
     # ── Load profile ───────────────────────────────────────────────────────────
-    # Auto-load from data/profile.json if it exists; also check project root
-    profile_sources = [
-        Path("data/profile.json"),
-        Path("profile.json"),
-        Path("app/profile.json"),
-    ]
-    # If none exist yet, copy from uploads if present
-    upload_profile = Path("/mnt/user-data/uploads/profile.json")
-    if upload_profile.exists():
-        dest = Path("data/profile.json")
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(upload_profile.read_text(encoding="utf-8"), encoding="utf-8")
-
+    # This now automatically uses APPLYJOB_PROFILE_PATH if set
     profile = prompt_profile_if_missing()
 
     # Apply overrides from .env

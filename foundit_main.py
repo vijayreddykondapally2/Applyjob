@@ -9,8 +9,11 @@ def run_foundit():
     load_dotenv()
     
     # Load candidate profile
-    profile_path = "data/profile.json"
-    with open(profile_path, "r") as f:
+    from app.profile_store import PROFILE_PATH
+    if not PROFILE_PATH.exists():
+        print(f"Could not find profile at {PROFILE_PATH}")
+        return
+    with open(PROFILE_PATH, "r") as f:
         profile = json.load(f)
     
     # Initialize AI Answerer

@@ -7,12 +7,12 @@ from app.naukri_agent import NaukriApplyAgent
 def run_naukri():
     load_dotenv()
 
-    profile_path = "data/profile.json"
-    if not os.path.exists(profile_path):
-        print("Could not find data/profile.json")
+    from app.profile_store import PROFILE_PATH
+    if not PROFILE_PATH.exists():
+        print(f"Could not find profile at {PROFILE_PATH}")
         return
 
-    with open(profile_path, "r") as f:
+    with open(PROFILE_PATH, "r") as f:
         profile = json.load(f)
 
     # ── Build AIAnswerer correctly ────────────────────────────────────────────
