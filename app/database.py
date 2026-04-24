@@ -81,10 +81,11 @@ def init_db():
     TEXT_TYPE = "TEXT"
     
     with get_db() as conn:
-        cur = conn.cursor()
+        if is_postgres:
+            conn.set_isolation_level(0)  # Autocommit mode for initialization
         
-        # Postgres doesn't like AUTOINCREMENT; it uses SERIAL.
-        # We also need to split scripts because psycopg2 doesn't have executescript.
+        cur = conn.cursor()
+        print("🛠️ Starting Database Initialization...")
         
         queries = [
             f"""CREATE TABLE IF NOT EXISTS users (
@@ -139,18 +140,21 @@ def init_db():
                 easy_apply_only INTEGER NOT NULL DEFAULT 1
             )"""
         ]
-        
+
         for q in queries:
+            table_name = q.split("IF NOT EXISTS ")[1].split(" ")[0].strip()
             try:
                 cur.execute(q)
-            except (psycopg2.errors.UniqueViolation, psycopg2.errors.DuplicateTable, psycopg2.errors.DuplicateObject):
-                # This happens if another worker is initializing at the same time; we can safely ignore it.
-                conn.rollback()
+                print(f"✅ Table check/creation: {table_name}")
             except Exception as e:
-                # For other errors, we still want to know
-                print(f"⚠️ Warning during table creation: {e}")
-                conn.rollback()
+                # In autocommit mode, we can just continue
+                if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                    print(f"ℹ️ Table {table_name} already exists.")
+                else:
+                    print(f"⚠️ Warning on {table_name}: {e}")
+        
         cur.close()
+        print("✨ Database Initialization Complete.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
