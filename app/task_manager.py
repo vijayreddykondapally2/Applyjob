@@ -49,10 +49,17 @@ def get_user_env(user_id: int, portals: List[str]) -> Dict[str, str]:
     env["ENABLE_AI_ANSWERING"] = "true" if settings.get("groq_api_key") else "false"
 
     # Job search
+    is_on_huggingface = os.getenv("SPACE_ID") is not None
     env["JOB_KEYWORDS"] = settings.get("job_keywords", "ETL Testing")
     env["JOB_LOCATION"] = settings.get("job_location", "India")
     env["MAX_JOBS"] = str(settings.get("max_jobs", 25))
-    env["HEADLESS"] = "true" if settings.get("headless") else "false"
+    
+    # Force headless on Hugging Face, otherwise use user setting
+    if is_on_huggingface:
+        env["HEADLESS"] = "true"
+    else:
+        env["HEADLESS"] = "true" if settings.get("headless") else "false"
+        
     env["EASY_APPLY_ONLY"] = "true" if settings.get("easy_apply_only") else "false"
 
     # Per-user browser profiles
