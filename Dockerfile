@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     libasound2 \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
