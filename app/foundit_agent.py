@@ -126,38 +126,72 @@ class FounditApplyAgent:
     # ─── Login ────────────────────────────────────────────────────────────
 
     def login(self):
-        print("Navigating to Foundit...")
-        self.page.goto("https://www.foundit.in/")
+        print("Navigating to Foundit Login...")
+        self.page.goto("https://www.foundit.in/rio/login/seeker", wait_until="load")
         self._safe_wait(5000)
 
         # Already logged in?
         try:
-            if self.page.locator(
-                ".profile-icon, .user-profile, .userName, [class*='profile']"
-            ).count() > 0:
+            if self.page.locator(".profile-icon, .userName, [class*='profile']").count() > 0:
                 print("✓ Already logged into Foundit.")
                 self._session_start = time.time()
                 return
         except Exception:
             pass
 
-        # Dismiss cookie banner
+        # Dismiss any initial popups
         try:
-            cb = self.page.locator(
-                "button:has-text('Accept'), button:has-text('Got it')"
-            )
-            if cb.count() > 0 and cb.first.is_visible():
-                cb.first.click(timeout=3000)
-                self._safe_wait(1000)
-        except Exception:
-            pass
+            for sel in ["button:has-text('Okay')", "button:has-text('Accept')", "button:has-text('Got it')"]:
+                btn = self.page.locator(sel).first
+                if btn.is_visible():
+                    btn.click(timeout=3000)
+                    self._safe_wait(1000)
+        except: pass
 
-        # Click Login on top ribbon
-        print("Clicking 'Login' button on top ribbon...")
-        for sel in [
-            "#seekerHeader button:has-text('Login')",
-            "header button:has-text('Login')",
-            "button:has-text('Login')",
+        print("Clicking 'LinkedIn' button for Social Login...")
+        try:
+            # We use the Popup handler to catch the LinkedIn window
+            with self.page.expect_popup() as popup_info:
+                # Try multiple selectors for the LinkedIn button
+                self.page.locator("button:has-text('LinkedIn'), [class*='linkedin']").first.click()
+            
+            popup = popup_info.value
+            popup.wait_for_load_state("load")
+            print(f"  -> LinkedIn Popup opened: {popup.url}")
+
+            # If not already logged in in the popup
+            if "linkedin.com" in popup.url:
+                if popup.locator("#username").count() > 0:
+                    print("  -> Filling LinkedIn credentials in popup...")
+                    email = os.getenv("LINKEDIN_EMAIL", "")
+                    password = os.getenv("LINKEDIN_PASSWORD", "")
+                    popup.fill("#username", email)
+                    popup.fill("#password", password)
+                    popup.click("button[type='submit']")
+                    popup.wait_for_load_state("load")
+
+                # Handle the "Allow" button if it appears
+                try:
+                    allow_btn = popup.locator("button:has-text('Allow'), button:has-text('Agree & Confirm')").first
+                    if allow_btn.is_visible(timeout=10000):
+                        print("  -> Clicking 'Allow' on LinkedIn permission screen...")
+                        allow_btn.click()
+                except:
+                    pass
+
+            print("  -> Waiting for Foundit to process the login...")
+            # Wait for the main page to reach the dashboard
+            for _ in range(30):
+                if "/dashboard" in self.page.url or self.page.locator(".profile-icon, .userName").count() > 0:
+                    print("✅ Foundit Login Successful!")
+                    self._session_start = time.time()
+                    return
+                self._safe_wait(1000)
+            
+            print(f"  !! Login timed out. Current URL: {self.page.url}")
+
+        except Exception as e:
+            print(f"❌ Foundit Login Error: {e}")
             "a:has-text('Login')",
         ]:
             try:
