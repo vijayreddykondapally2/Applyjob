@@ -3,6 +3,7 @@ import time
 import urllib.parse
 from playwright.sync_api import sync_playwright, Page
 from app.utils import should_run_headless
+from app.log_utils import log_info, log_ok, log_fail, log_apply, log_skip, log_wait, log_step
 
 
 class MonsterApplyAgent:
@@ -83,7 +84,7 @@ class MonsterApplyAgent:
         # Already logged in?
         try:
             if self.page.locator(".profile-icon, .userName, [class*='profile']").count() > 0:
-                print("✓ Already logged into Monster/Foundit.")
+                log_ok("monster", "Reused existing session — already logged in")
                 return
         except Exception:
             pass
@@ -97,7 +98,7 @@ class MonsterApplyAgent:
                     self.page.wait_for_timeout(1000)
         except: pass
 
-        print("Clicking 'LinkedIn' button for Social Login...")
+        log_step("monster", "Clicking LinkedIn social login...")
         try:
             with self.page.expect_popup() as popup_info:
                 self.page.locator("button:has-text('LinkedIn'), [class*='linkedin']").first.click()
@@ -126,12 +127,12 @@ class MonsterApplyAgent:
             print("  -> Waiting for Dashboard...")
             for _ in range(30):
                 if "/dashboard" in self.page.url or self.page.locator(".profile-icon, .userName").count() > 0:
-                    print("✅ Monster/Foundit Login Successful!")
+                    log_ok("monster", "Login successful!")
                     return
                 self.page.wait_for_timeout(1000)
             
         except Exception as e:
-            print(f"❌ Monster Login Error: {e}")
+            log_fail("monster", f"Login error: {e}")
 
     # ─── Search & Apply ───────────────────────────────────────────────────
 
@@ -145,9 +146,7 @@ class MonsterApplyAgent:
             f"?q={encoded_kw}&where={encoded_loc}"
         )
 
-        print(f"\n{'='*50}")
-        print(f"  Searching: '{keyword}' in '{location}'")
-        print(f"{'='*50}")
+        log_info("monster", f"Searching: '{keyword}' in '{location}'")
 
         self.page.goto(self._search_url)
         self.page.wait_for_timeout(8000)
@@ -161,19 +160,19 @@ class MonsterApplyAgent:
             cards = self.page.locator("article, .job-search-card, [class*='jobCard']")
             count = cards.count()
 
-        print(f"  Found {count} job cards.")
+        log_info("monster", f"Found {count} jobs")
         if count == 0:
-            print("  ! No results. Skipping keyword.")
+            log_skip("monster", f"No results for '{keyword}'. Skipping.")
             return
 
         applied_this_keyword = 0
         for i in range(min(count, max_jobs)):
             try:
-                print(f"\n[{i+1}/{count}] ", end="")
+                log_info("monster", f"[{i+1}/{count}] Processing job...")
                 self._process_card(i)
                 applied_this_keyword += 1
             except Exception as e:
-                print(f"  x Error on job {i+1}: {e}")
+                log_fail("monster", f"Error on job {i+1}: {e}")
 
             # Always return to the search page after each job
             self._return_to_search()

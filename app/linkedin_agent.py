@@ -16,6 +16,7 @@ from app.ai_answerer import AIAnswerer
 from app.job_types import ApplyResult, JobCard
 from app.question_memory import QuestionMemory
 from app.utils import debug_log, get_compressed_dom, should_run_headless
+from app.log_utils import log_info, log_ok, log_fail, log_apply, log_skip, log_wait, log_step
 
 
 class LinkedInApplyAgent:
@@ -87,7 +88,7 @@ class LinkedInApplyAgent:
             except Exception:
                 pass
 
-        print(f"Launching browser for LinkedIn... (headless={self.headless})")
+        log_info("linkedin", f"Launching browser (headless={self.headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=self.user_data_dir,
             headless=self.headless,
@@ -108,6 +109,16 @@ class LinkedInApplyAgent:
     # LOGIN
     # ═══════════════════════════════════════════════════════════════
 
+    def _is_page_alive(self) -> bool:
+        """Check if the main browser page is still open and usable."""
+        if not self.page:
+            return False
+        try:
+            self.page.evaluate("() => true")
+            return True
+        except Exception:
+            return False
+
     def login(
         self,
         allow_manual_checkpoint: bool = False,
@@ -123,36 +134,39 @@ class LinkedInApplyAgent:
         self.page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded")
         self.page.wait_for_timeout(1500)
         if "/feed" in self.page.url.lower():
-            print("✓ Reused existing LinkedIn session.")
+            log_ok("linkedin", "Reused existing session — already logged in")
             return
 
+        log_info("linkedin", "Opening login page...")
         self.page.goto("https://www.linkedin.com/login", wait_until="domcontentloaded")
+        log_step("linkedin", f"Entering email: {self.email[:4]}***")
         self.page.fill("#username", self.email)
+        log_step("linkedin", "Entering password: ••••••")
         self.page.fill("#password", self.password)
 
         if manual_login_submit:
-            print(
-                "\nCredentials filled.\n"
-                "Complete any CAPTCHA/2FA manually, then click Sign in.\n"
-                "Waiting for LinkedIn feed...\n"
-            )
+            log_wait("linkedin", "Credentials filled. Waiting for manual login (CAPTCHA/2FA)...")
             self._wait_for_login(timeout_seconds=manual_timeout_seconds)
             return
 
+        log_step("linkedin", "Clicking 'Sign In' button...")
         self.page.click('button[type="submit"]')
         self.page.wait_for_timeout(4000)
         if "feed" in self.page.url:
+            log_ok("linkedin", "Login successful!")
             return
         if "checkpoint" in self.page.url or "challenge" in self.page.url:
             if not allow_manual_checkpoint:
+                log_fail("linkedin", "Login blocked — CAPTCHA/checkpoint detected (no manual handler)")
                 raise RuntimeError("Checkpoint detected. Enable manual checkpoint handling.")
-            print("\nCheckpoint detected. Complete manually in browser.\n")
+            log_wait("linkedin", "CAPTCHA/checkpoint detected — waiting for manual completion...")
             self._wait_for_login(timeout_seconds=manual_timeout_seconds)
             return
         if allow_manual_checkpoint:
-            print("\nLogin did not reach feed – please complete manually.\n")
+            log_wait("linkedin", "Login did not reach feed — waiting for manual completion...")
             self._wait_for_login(timeout_seconds=manual_timeout_seconds)
             return
+        log_fail("linkedin", "Login failed — could not reach LinkedIn feed")
         raise RuntimeError("LinkedIn login failed.")
 
     def _wait_for_login(self, timeout_seconds: int = 180) -> None:
@@ -163,12 +177,13 @@ class LinkedInApplyAgent:
         while unlimited or waited_ms < timeout_seconds * 1000:
             url = self.page.url.lower()
             if "/feed" in url or "/jobs" in url or "/mynetwork" in url:
-                print("✓ Logged in.")
+                log_ok("linkedin", "Login successful!")
                 return
             self.page.wait_for_timeout(step)
             waited_ms += step
             if waited_ms % 30000 == 0:
-                print(f"Still waiting for login… ({waited_ms // 1000}s) | URL: {self.page.url}")
+                log_wait("linkedin", f"Still waiting for login... ({waited_ms // 1000}s)")
+        log_fail("linkedin", f"Login timeout after {timeout_seconds}s")
         raise RuntimeError(f"Login timeout after {timeout_seconds}s.")
 
     # ═══════════════════════════════════════════════════════════════
@@ -417,7 +432,7 @@ class LinkedInApplyAgent:
         done_urls: Set[str] = set()
         done_urls |= self._session_applied
 
-        print(f"\n  Starting job loop: {len(discovered_jobs)} jobs to process.")
+        log_info("linkedin", f"Processing {len(discovered_jobs)} jobs...")
 
         for idx, job in enumerate(discovered_jobs):
             norm_url = self._normalize_url(job.url)
@@ -425,25 +440,25 @@ class LinkedInApplyAgent:
 
             # ── Skip checks ───────────────────────────────────────
             if norm_url in done_urls:
-                print(f"{label} → SKIP (already processed this session)")
+                log_skip("linkedin", f"[{idx+1}/{len(discovered_jobs)}] {job.title} @ {job.company} — already processed")
                 continue
 
             if job.is_already_applied:
-                print(f"{label} → SKIP (card badge: Applied)")
+                log_skip("linkedin", f"[{idx+1}/{len(discovered_jobs)}] {job.title} @ {job.company} — already applied")
                 r = ApplyResult(job.title, job.company, job.url, "n/a", "skipped",
                                 "Already applied (card badge).")
                 results.append(r)
                 self._session_applied.add(norm_url)
                 continue
 
-            print(f"\n{label}")
+            log_info("linkedin", f"[{idx+1}/{len(discovered_jobs)}] Applying: {job.title} @ {job.company}")
 
             # ── Scroll sidebar to bring this card into view, then click ──
             # We NEVER call page.goto() here — that would reload the search
             # page and reset the sidebar back to card #1.
             clicked = self._click_job_card(job)
             if not clicked:
-                print(f"  ⚠ Card click failed — skipping to next job.")
+                log_fail("linkedin", f"Card click failed — skipping {job.title}")
                 results.append(ApplyResult(
                     job.title, job.company, job.url, "n/a",
                     "skipped", "Could not click sidebar card."
@@ -460,7 +475,6 @@ class LinkedInApplyAgent:
 
             # ── Detect & apply ────────────────────────────────────
             action = self._detect_apply_action()
-            print(f"  Action: {action}")
 
             if action == "already":
                 r = ApplyResult(job.title, job.company, job.url, "n/a",
@@ -471,9 +485,11 @@ class LinkedInApplyAgent:
             elif action == "easy":
                 result = self._try_easy_apply(job)
                 results.append(result)
-                print(f"  Result: {result.status} — {result.note}")
                 if result.status == "submitted":
+                    log_apply("linkedin", f"Applied to: {job.title} @ {job.company}")
                     self._session_applied.add(norm_url)
+                else:
+                    log_fail("linkedin", f"Could not apply: {job.title} — {result.note}")
 
             elif action == "external":
                 r = ApplyResult(job.title, job.company, job.url, "external",
@@ -493,7 +509,7 @@ class LinkedInApplyAgent:
             # User requested 3-5 min delay between each application to avoid account flags
             if idx < len(discovered_jobs) - 1:
                 delay_sec = random.randint(180, 300)
-                print(f"\n⏳ Pacing: Waiting {delay_sec // 60}m {delay_sec % 60}s before next job...")
+                log_wait("linkedin", f"Pacing delay: {delay_sec // 60}m {delay_sec % 60}s before next job")
                 for s in range(delay_sec, 0, -10):
                     if s % 60 == 0:
                         print(f"  ({s // 60}m remaining...)")

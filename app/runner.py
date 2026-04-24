@@ -12,6 +12,7 @@ from app.job_types import JobCard
 from app.linkedin_agent import LinkedInApplyAgent
 from app.profile_store import prompt_profile_if_missing, PROFILE_PATH
 from app.utils import bool_env, int_env, should_run_headless
+from app.log_utils import log_info, log_ok, log_fail, log_apply, log_skip, log_wait, log_step
 
 
 def _split_csv(value: str) -> List[str]:
@@ -108,7 +109,7 @@ def run() -> None:
         ai_answerer=ai_answerer,
     ) as agent:
         try:
-            print("\nLogging into LinkedIn…")
+            log_info("linkedin", "Starting login...")
             agent.login(
                 allow_manual_checkpoint=allow_manual_ckpt,
                 manual_timeout_seconds=manual_ckpt_timeout,
@@ -119,13 +120,11 @@ def run() -> None:
             session_start_time = time.time()
             while True:
                 kw = search_keyword_list[(cycle - 1) % len(search_keyword_list)]
-                print(f"\n{'='*60}")
-                print(f"Cycle {cycle} | Keywords: '{kw}' | Location: '{location}'")
-                print(f"{'='*60}")
+                log_info("linkedin", f"Cycle {cycle} | Searching: '{kw}' in '{location}'")
 
                 # ── Session Timeout Check ──────────────────────────────────
                 if time.time() - session_start_time > 900:
-                    print("\n⏳ Reached maximum session runtime of 15 minutes. Closing session.")
+                    log_wait("linkedin", "Session limit reached (15 min). Closing.")
                     break
 
                 # ── Page 1: navigate to search URL ─────────────────────────
@@ -136,7 +135,7 @@ def run() -> None:
                     direct_search_url=job_search_url if job_search_url else "",
                 )
                 if not ok:
-                    print("  Could not load search page. Retrying next cycle.")
+                    log_fail("linkedin", "Could not load search page. Retrying next cycle.")
                 else:
                     page_num = 1
                     while page_num <= max_pages:
@@ -184,7 +183,7 @@ def run() -> None:
                             agent.save_results(results)
                             submitted = sum(1 for r in results if r.status == "submitted")
                             skipped   = sum(1 for r in results if r.status == "skipped")
-                            print(f"\n  Page {page_num} done: {submitted} submitted, {skipped} skipped.")
+                            log_ok("linkedin", f"Page {page_num}: {submitted} applied, {skipped} skipped")
 
                         # Navigate to next page (no find_jobs call → no page.goto())
                         if agent.click_next_page():

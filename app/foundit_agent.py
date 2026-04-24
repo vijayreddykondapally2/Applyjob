@@ -6,6 +6,7 @@ import urllib.parse
 from datetime import datetime
 from playwright.sync_api import sync_playwright, Page
 from app.utils import should_run_headless
+from app.log_utils import log_info, log_ok, log_fail, log_apply, log_skip, log_wait, log_step
 
 
 # Maximum session duration in seconds (15 minutes)
@@ -128,14 +129,14 @@ class FounditApplyAgent:
     # ─── Login ────────────────────────────────────────────────────────────
 
     def login(self):
-        print("Navigating to Foundit Login...")
+        log_info("foundit", "Opening login page...")
         self.page.goto("https://www.foundit.in/rio/login/seeker", wait_until="load")
         self._safe_wait(5000)
 
         # Already logged in?
         try:
             if self.page.locator(".profile-icon, .userName, [class*='profile']").count() > 0:
-                print("✓ Already logged into Foundit.")
+                log_ok("foundit", "Reused existing session — already logged in")
                 self._session_start = time.time()
                 return
         except Exception:
@@ -150,7 +151,7 @@ class FounditApplyAgent:
                     self._safe_wait(1000)
         except: pass
 
-        print("Clicking 'LinkedIn' button for Social Login...")
+        log_step("foundit", "Clicking LinkedIn social login...")
         try:
             # We use the Popup handler to catch the LinkedIn window
             with self.page.expect_popup() as popup_info:
@@ -207,7 +208,7 @@ class FounditApplyAgent:
             return
 
         print(f"\n{'='*50}")
-        print(f"  BULK APPLY: '{keyword}'  (up to {max_pages} pages)")
+        log_info("foundit", f"Bulk applying: '{keyword}' (up to {max_pages} pages)")
         mins_left = max(0, int(self._time_remaining() // 60))
         print(f"  Time remaining : ~{mins_left} min")
         print(f"  Pages applied  : {self.pages_applied}/{MAX_TOTAL_PAGES}")
@@ -244,7 +245,7 @@ class FounditApplyAgent:
             # Confirm & Apply (on the SAME page, not a new tab)
             if self._click_confirm_apply():
                 self.pages_applied += 1
-                print(f"  📊 Pages applied: {self.pages_applied}/{MAX_TOTAL_PAGES}")
+                log_apply("foundit", f"Bulk applied page {self.pages_applied}/{MAX_TOTAL_PAGES} for '{keyword}'")
                 if self._should_stop():
                     print("  ✅ 3-page limit reached! Closing.")
                     return

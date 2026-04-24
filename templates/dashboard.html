@@ -277,6 +277,21 @@
 .stat-animated {
     animation: pop 0.6s ease-out;
 }
+
+/* ─── Structured Log Colors ─── */
+.log-ok    { color: #10b981; font-weight: 600; }    /* Green — success */
+.log-fail  { color: #ef4444; font-weight: 600; }    /* Red — errors */
+.log-apply { color: #a78bfa; font-weight: 600; }    /* Purple — job applied */
+.log-skip  { color: #6b7280; font-style: italic; }  /* Grey — skipped */
+.log-wait  { color: #f59e0b; }                       /* Yellow — waiting */
+.log-step  { color: #60a5fa; }                       /* Blue — sub-steps */
+.log-info  { color: #d1d5db; }                       /* Light grey — info */
+.log-portal { 
+    color: #818cf8; 
+    font-weight: 700; 
+    font-family: monospace; 
+    margin-right: 4px; 
+}
 </style>
 
 {% endblock %}
@@ -424,10 +439,31 @@
                     let sessionErrorFound = false;
                     
                     data.logs.forEach(line => {
-                        let isError = line.includes('Traceback') || line.includes('ERROR:') || line.includes('RuntimeError:');
-                        if (isError) sessionErrorFound = true;
+                        const safe = line.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                         
-                        logHtml += `<div class="log-line ${isError ? 'text-danger' : ''}">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                        // Parse structured tags: [PORTAL] [LEVEL] message
+                        const tagMatch = safe.match(/^\[(\w+)\s*\]\s*\[(\w+)\s*\]\s*(.*)/);
+                        
+                        if (tagMatch) {
+                            const portal = tagMatch[1];
+                            const level = tagMatch[2].toLowerCase();
+                            const msg = tagMatch[3];
+                            
+                            const levelClass = {
+                                'ok': 'log-ok', 'fail': 'log-fail', 'apply': 'log-apply',
+                                'skip': 'log-skip', 'wait': 'log-wait', 'step': 'log-step',
+                                'info': 'log-info'
+                            }[level] || 'log-info';
+                            
+                            if (level === 'fail') sessionErrorFound = true;
+                            
+                            logHtml += `<div class="log-line ${levelClass}"><span class="log-portal">[${portal}]</span> ${msg}</div>`;
+                        } else {
+                            // Unstructured line — check for errors
+                            let isError = safe.includes('Traceback') || safe.includes('ERROR:') || safe.includes('RuntimeError:');
+                            if (isError) sessionErrorFound = true;
+                            logHtml += `<div class="log-line ${isError ? 'log-fail' : 'log-info'}">${safe}</div>`;
+                        }
                     });
                     
                     logView.innerHTML = logHtml;

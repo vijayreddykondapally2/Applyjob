@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 from playwright.sync_api import sync_playwright, Page, Frame
 from app.utils import should_run_headless
+from app.log_utils import log_info, log_ok, log_fail, log_apply, log_skip, log_wait, log_step
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Selectors for the questionnaire panel that Naukri opens on the RIGHT side
@@ -143,19 +144,19 @@ class NaukriApplyAgent:
     # ─────────────────────────────────────────────────────────────────────────
 
     def login(self):
-        print("Navigating to Naukri login...")
+        log_info("naukri", "Opening login page...")
         self.page.goto("https://www.naukri.com/nlogin/login")
         self.page.wait_for_timeout(3000)
 
         if "login" not in self.page.url.lower():
-            print("✓ Already logged into Naukri.")
+            log_ok("naukri", "Reused existing session — already logged in")
             return
 
         email    = os.getenv("NAUKARI_EMAIL", "") or os.getenv("LINKEDIN_EMAIL", "")
         password = os.getenv("NAUKARI_PASSWORD", "") or os.getenv("LINKEDIN_PASSWORD", "")
 
         if email and password:
-            print(f"Injecting login credentials for {email}...")
+            log_step("naukri", f"Entering email: {email[:4]}***")
             try:
                 email_loc = self.page.locator("#usernameField, input[placeholder*='Email']")
                 if email_loc.count() > 0:
@@ -171,21 +172,21 @@ class NaukriApplyAgent:
             except Exception as e:
                 print(f"Autofill warning: {e}")
         else:
-            print("No credentials found in .env – please log in manually.")
+            log_info("naukri", "No credentials found — please log in manually.")
 
         # Wait and verify login succeeded
-        print("Waiting for Naukri login to complete...")
+        log_info("naukri", "Waiting for login to complete...")
         for attempt in range(20):  # 20 * 3s = 60s max
             self.page.wait_for_timeout(3000)
             current_url = self.page.url.lower()
             if "login" not in current_url and "nlogin" not in current_url:
-                print(f"✓ Naukri login successful! (URL: {self.page.url})")
+                log_ok("naukri", "Login successful!")
                 return
             if attempt % 5 == 4:
-                print(f"  Still waiting for Naukri login... ({(attempt+1)*3}s)")
+                log_wait("naukri", f"Still waiting for login... ({(attempt+1)*3}s)")
         
-        print(f"⚠ Naukri login may have failed. Current URL: {self.page.url}")
-        print("  Continuing anyway — agent will try to work with current session.")
+        log_fail("naukri", f"Login may have failed (URL: {self.page.url})")
+        log_info("naukri", "Continuing anyway with current session...")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Job search & loop
@@ -217,7 +218,7 @@ class NaukriApplyAgent:
             return
 
         count = found_cards.count()
-        print(f"Found {count} job cards!")
+        log_info("naukri", f"Found {count} jobs on page")
 
         for i in range(min(15, count)):
             # Check if the main search page is still alive
@@ -226,7 +227,7 @@ class NaukriApplyAgent:
                 break
 
             try:
-                print(f"\n[{i+1}/{count}] Opening job...")
+                log_info("naukri", f"[{i+1}/{count}] Opening job...")
 
                 with self.context.expect_page() as new_page_info:
                     base_card  = found_cards.nth(i)
