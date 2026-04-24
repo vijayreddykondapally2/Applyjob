@@ -13,7 +13,7 @@
     <!-- Error Banner (Hidden by default) -->
     <div id="error-banner" class="alert alert-danger" style="display: none; margin-bottom: 20px; align-items: center; justify-content: space-between; padding: 15px; border-radius: 8px; background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c;">
         <div><strong>⚠️ Agent Error Detected:</strong> Check the logs below. An agent may have crashed.</div>
-        <button onclick="document.getElementById('error-banner').style.display='none'" class="btn btn-sm" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Dismiss</button>
+        <button onclick="dismissError()" class="btn btn-sm" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Dismiss</button>
     </div>
 
     <!-- Stats Cards -->
@@ -315,7 +315,14 @@
         return portals;
     }
 
+    window.errorDismissed = false;
+    function dismissError() {
+        window.errorDismissed = true;
+        document.getElementById('error-banner').style.display = 'none';
+    }
+
     function doLaunch(portals) {
+        window.errorDismissed = false; // Reset on new launch
         if (portals.length === 0) {
             alert('Select at least one portal!');
             return;
@@ -413,16 +420,21 @@
                 // Update logs
                 const logView = document.getElementById('log-view');
                 if (data.logs && data.logs.length > 0) {
-                    let hasError = false;
-                    logView.innerHTML = data.logs.map(line => {
-                        if (line.includes('Traceback') || line.includes('ERROR:')) {
-                            hasError = true;
-                        }
-                        return `<div class="log-line">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
-                    }).join('');
+                    let logHtml = "";
+                    let sessionErrorFound = false;
+                    
+                    data.logs.forEach(line => {
+                        let isError = line.includes('Traceback') || line.includes('ERROR:') || line.includes('RuntimeError:');
+                        if (isError) sessionErrorFound = true;
+                        
+                        logHtml += `<div class="log-line ${isError ? 'text-danger' : ''}">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                    });
+                    
+                    logView.innerHTML = logHtml;
                     logView.scrollTop = logView.scrollHeight;
                     
-                    if (hasError) {
+                    // Show error banner ONLY if new errors found and not dismissed
+                    if (sessionErrorFound && !window.errorDismissed) {
                         document.getElementById('error-banner').style.display = 'flex';
                     }
                 }

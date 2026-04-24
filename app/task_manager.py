@@ -157,7 +157,7 @@ def start_run(user_id: int, portals: List[str]) -> Dict[str, Any]:
         python_exe = sys.executable
         proc = subprocess.Popen(
             [python_exe, "-u", "main.py", portal_arg],
-            stdout=open(log_path, "a"),
+            stdout=open(log_path, "w"), # Start fresh log for every run
             stderr=subprocess.STDOUT,
             env=env,
             cwd=os.getcwd(),
@@ -235,7 +235,7 @@ def get_user_status(user_id: int) -> Dict[str, Any]:
         try:
             with open(log_path, "r", encoding="utf-8", errors="replace") as f:
                 all_lines = f.read().splitlines()
-                log_lines = all_lines[-30:]  # Last 30 lines
+                log_lines = all_lines[-100:]  # Last 100 lines for better parallel visibility
         except Exception:
             pass
 
