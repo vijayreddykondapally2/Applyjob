@@ -263,8 +263,13 @@ def admin_panel():
 # Startup
 # ═══════════════════════════════════════════════════════════════════════════════
 
-if __name__ == "__main__":
+# Initialize database on startup (crucial for Gunicorn/Production)
+try:
     init_db()
     print("✅ Database initialized.")
-    print("🚀 Starting ApplyJob AI — Multi-User Production Server")
+except Exception as e:
+    print(f"❌ Database initialization failed: {e}")
+
+if __name__ == "__main__":
+    print("🚀 Starting ApplyJob AI — Multi-User Development Server")
     app.run(host="0.0.0.0", port=5001, debug=True, threaded=True)
