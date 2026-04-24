@@ -50,12 +50,15 @@ def get_user_env(user_id: int, portals: List[str]) -> Dict[str, str]:
 
     # Job search
     is_on_huggingface = os.getenv("SPACE_ID") is not None
+    has_display = os.getenv("DISPLAY") is not None
+    is_linux = sys.platform.startswith("linux")
+    
     env["JOB_KEYWORDS"] = settings.get("job_keywords", "ETL Testing")
     env["JOB_LOCATION"] = settings.get("job_location", "India")
     env["MAX_JOBS"] = str(settings.get("max_jobs", 25))
     
-    # Force headless on Hugging Face, otherwise use user setting
-    if is_on_huggingface:
+    # Force headless if on Hugging Face or on Linux without an X server (no GUI)
+    if is_on_huggingface or (is_linux and not has_display):
         env["HEADLESS"] = "true"
     else:
         env["HEADLESS"] = "true" if settings.get("headless") else "false"
