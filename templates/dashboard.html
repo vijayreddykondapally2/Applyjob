@@ -10,6 +10,12 @@
         </div>
     </div>
 
+    <!-- Error Banner (Hidden by default) -->
+    <div id="error-banner" class="alert alert-danger" style="display: none; margin-bottom: 20px; align-items: center; justify-content: space-between; padding: 15px; border-radius: 8px; background-color: #fee2e2; border: 1px solid #ef4444; color: #b91c1c;">
+        <div><strong>⚠️ Agent Error Detected:</strong> Check the logs below. An agent may have crashed.</div>
+        <button onclick="document.getElementById('error-banner').style.display='none'" class="btn btn-sm" style="background:#ef4444; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Dismiss</button>
+    </div>
+
     <!-- Stats Cards -->
     <div class="stats-grid">
         <div class="stat-card stat-total">
@@ -54,41 +60,77 @@
 
         <!-- Portal Selection -->
         <div class="portal-selector">
-            <label class="portal-check">
-                <input type="checkbox" id="portal-linkedin" value="linkedin" checked>
-                <span class="portal-chip portal-linkedin-chip">
-                    <span class="chip-icon">💼</span> LinkedIn
-                </span>
-            </label>
-            <label class="portal-check">
-                <input type="checkbox" id="portal-naukri" value="naukri" checked>
-                <span class="portal-chip portal-naukri-chip">
-                    <span class="chip-icon">🔍</span> Naukri
-                </span>
-            </label>
-            <label class="portal-check">
-                <input type="checkbox" id="portal-foundit" value="foundit" checked>
-                <span class="portal-chip portal-foundit-chip">
-                    <span class="chip-icon">🌐</span> Foundit
-                </span>
-            </label>
-            <label class="portal-check">
-                <input type="checkbox" id="portal-monster" value="monster" checked>
-                <span class="portal-chip portal-monster-chip">
-                    <span class="chip-icon">👾</span> Monster
-                </span>
-            </label>
+            <div class="portal-item">
+                <label class="portal-check">
+                    <input type="checkbox" id="portal-linkedin" value="linkedin" checked>
+                    <span class="portal-chip portal-linkedin-chip">
+                        <span class="chip-icon">💼</span> LinkedIn
+                    </span>
+                </label>
+                <button class="btn btn-sm btn-ghost relaunch-btn" onclick="launchSingleAgent('linkedin')" title="Launch only LinkedIn">▶ Run</button>
+            </div>
+            
+            <div class="portal-item">
+                <label class="portal-check">
+                    <input type="checkbox" id="portal-naukri" value="naukri" checked>
+                    <span class="portal-chip portal-naukri-chip">
+                        <span class="chip-icon">🔍</span> Naukri
+                    </span>
+                </label>
+                <button class="btn btn-sm btn-ghost relaunch-btn" onclick="launchSingleAgent('naukri')" title="Launch only Naukri">▶ Run</button>
+            </div>
+
+            <div class="portal-item">
+                <label class="portal-check">
+                    <input type="checkbox" id="portal-foundit" value="foundit" checked>
+                    <span class="portal-chip portal-foundit-chip">
+                        <span class="chip-icon">🌐</span> Foundit
+                    </span>
+                </label>
+                <button class="btn btn-sm btn-ghost relaunch-btn" onclick="launchSingleAgent('foundit')" title="Launch only Foundit">▶ Run</button>
+            </div>
+
+            <div class="portal-item">
+                <label class="portal-check">
+                    <input type="checkbox" id="portal-monster" value="monster" checked>
+                    <span class="portal-chip portal-monster-chip">
+                        <span class="chip-icon">👾</span> Monster
+                    </span>
+                </label>
+                <button class="btn btn-sm btn-ghost relaunch-btn" onclick="launchSingleAgent('monster')" title="Launch only Monster">▶ Run</button>
+            </div>
         </div>
 
+        <style>
+        .portal-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .relaunch-btn {
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            color: #10b981;
+            border: 1px solid #10b981;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .relaunch-btn:hover {
+            background: #10b981;
+            color: white;
+        }
+        </style>
+
         <!-- Action Buttons -->
-        <div class="control-actions">
+        <div class="control-actions" style="display: flex; gap: 1rem; margin-top: 1.5rem;">
             <button id="run-btn" class="btn btn-primary btn-lg" onclick="launchAgents()"
-                    {{ 'style=display:none' if status.is_running }}>
+                    {{ 'disabled' if status.is_running else '' }}>
                 🚀 Launch Agents
             </button>
             <button id="stop-btn" class="btn btn-danger btn-lg" onclick="stopAgents()"
-                    {{ 'style=display:none' if not status.is_running }}>
-                ⏹ Stop All Agents
+                    {{ 'disabled' if not status.is_running else '' }}>
+                ⏹ Abort Agents
             </button>
         </div>
 
@@ -153,6 +195,62 @@
     </div>
 </div>
 
+<!-- Live Notification Toast -->
+<div id="live-toast" class="live-toast">
+    <div class="toast-icon">🎉</div>
+    <div class="toast-content">
+        <div class="toast-title">New Application Submitted!</div>
+        <div class="toast-message" id="toast-message">Company Name</div>
+    </div>
+</div>
+
+<style>
+/* Toast Notification Styles */
+.live-toast {
+    position: fixed;
+    bottom: 20px;
+    right: -400px;
+    background: rgba(20, 20, 25, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #4f46e5;
+    padding: 15px 20px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transition: right 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 9999;
+    color: white;
+}
+.live-toast.show {
+    right: 20px;
+}
+.toast-icon {
+    font-size: 1.5rem;
+}
+.toast-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+.toast-message {
+    font-size: 0.85rem;
+    color: #a0aec0;
+}
+
+/* Stat Animation */
+@keyframes pop {
+    0% { transform: scale(1); color: #fff; }
+    50% { transform: scale(1.3); color: #4f46e5; }
+    100% { transform: scale(1); color: #fff; }
+}
+.stat-animated {
+    animation: pop 0.6s ease-out;
+}
+</style>
+
 {% endblock %}
 
 {% block scripts %}
@@ -165,8 +263,7 @@
         return portals;
     }
 
-    function launchAgents() {
-        const portals = getSelectedPortals();
+    function doLaunch(portals) {
         if (portals.length === 0) {
             alert('Select at least one portal!');
             return;
@@ -184,8 +281,6 @@
         .then(r => r.json())
         .then(data => {
             if (data.status === 'started' || data.status === 'already_running') {
-                document.getElementById('run-btn').style.display = 'none';
-                document.getElementById('stop-btn').style.display = 'inline-flex';
                 updateStatusBadge(true);
             } else {
                 alert('Error: ' + (data.message || data.status));
@@ -198,6 +293,14 @@
             btn.disabled = false;
             btn.textContent = '🚀 Launch Agents';
         });
+    }
+
+    function launchAgents() {
+        doLaunch(getSelectedPortals());
+    }
+
+    function launchSingleAgent(portal) {
+        doLaunch([portal]);
     }
 
     function stopAgents() {
@@ -228,6 +331,8 @@
         }
     }
 
+    let currentTotalApps = parseInt("{{ stats.get('total', 0) }}", 10);
+
     function pollStatus() {
         fetch('/api/status')
             .then(r => r.json())
@@ -235,22 +340,55 @@
                 // Update logs
                 const logView = document.getElementById('log-view');
                 if (data.logs && data.logs.length > 0) {
-                    logView.innerHTML = data.logs.map(line =>
-                        `<div class="log-line">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
-                    ).join('');
+                    let hasError = false;
+                    logView.innerHTML = data.logs.map(line => {
+                        if (line.includes('Traceback') || line.includes('ERROR:')) {
+                            hasError = true;
+                        }
+                        return `<div class="log-line">${line.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                    }).join('');
                     logView.scrollTop = logView.scrollHeight;
+                    
+                    if (hasError) {
+                        document.getElementById('error-banner').style.display = 'flex';
+                    }
+                }
+
+                // Live Stats Animation
+                if (data.stats && data.stats.total > currentTotalApps) {
+                    currentTotalApps = data.stats.total;
+                    
+                    // Update numbers
+                    document.getElementById('stat-total').textContent = currentTotalApps;
+                    
+                    // Animate total
+                    const totalEl = document.getElementById('stat-total');
+                    totalEl.classList.remove('stat-animated');
+                    void totalEl.offsetWidth; // trigger reflow
+                    totalEl.classList.add('stat-animated');
+
+                    // Show Toast Notification
+                    if (data.latest_app) {
+                        const toast = document.getElementById('live-toast');
+                        document.getElementById('toast-message').textContent = 
+                            `${data.latest_app.company} via ${data.latest_app.portal}`;
+                        toast.classList.add('show');
+                        setTimeout(() => toast.classList.remove('show'), 4000);
+                    }
                 }
 
                 // Update status
                 updateStatusBadge(data.is_running);
+                const runBtn = document.getElementById('run-btn');
+                const stopBtn = document.getElementById('stop-btn');
+                
                 if (data.is_running) {
-                    document.getElementById('run-btn').style.display = 'none';
-                    document.getElementById('stop-btn').style.display = 'inline-flex';
+                    runBtn.disabled = true;
+                    stopBtn.disabled = false;
                 } else {
-                    document.getElementById('run-btn').style.display = 'inline-flex';
-                    document.getElementById('run-btn').disabled = false;
-                    document.getElementById('run-btn').textContent = '🚀 Launch Agents';
-                    document.getElementById('stop-btn').style.display = 'none';
+                    runBtn.disabled = false;
+                    runBtn.textContent = '🚀 Launch Agents';
+                    stopBtn.disabled = true;
                 }
             })
             .catch(() => {});

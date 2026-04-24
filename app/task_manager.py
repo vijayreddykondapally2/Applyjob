@@ -229,11 +229,19 @@ def get_user_status(user_id: int) -> Dict[str, Any]:
         except Exception:
             pass
 
+    from app.database import get_application_stats, get_applications
+    
+    stats = get_application_stats(user_id)
+    recent_apps = get_applications(user_id, limit=1)
+    latest_app = recent_apps[0] if recent_apps else None
+
     return {
         "is_running": is_running,
         "active_run_id": active_run_id,
         "logs": log_lines,
         "active_runs": get_active_runs(user_id),
+        "stats": stats,
+        "latest_app": latest_app,
     }
 
 
