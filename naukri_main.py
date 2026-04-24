@@ -5,7 +5,7 @@ from app.naukri_agent import NaukriApplyAgent
 
 
 def run_naukri():
-    load_dotenv()
+    # Environment variables are managed by the Task Manager
 
     from app.profile_store import PROFILE_PATH
     if not PROFILE_PATH.exists():

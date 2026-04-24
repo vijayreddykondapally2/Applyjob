@@ -6,7 +6,7 @@ from app.monster_agent import MonsterApplyAgent
 from app.ai_answerer import AIAnswerer
 
 def run_monster():
-    load_dotenv()
+    # Environment variables are managed by the Task Manager
     
     from app.profile_store import PROFILE_PATH
     if not PROFILE_PATH.exists():

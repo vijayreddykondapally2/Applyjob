@@ -26,7 +26,7 @@ def _job_matches_keywords(job: JobCard, keywords: List[str]) -> bool:
 
 
 def run() -> None:
-    load_dotenv(override=True)
+    # Environment variables are managed by the Task Manager
 
     email    = os.getenv("LINKEDIN_EMAIL", "").strip()
     password = os.getenv("LINKEDIN_PASSWORD", "").strip()

@@ -6,7 +6,7 @@ from app.foundit_agent import FounditApplyAgent
 from app.ai_answerer import AIAnswerer
 
 def run_foundit():
-    load_dotenv()
+    # Environment variables are managed by the Task Manager
     
     # Load candidate profile
     from app.profile_store import PROFILE_PATH

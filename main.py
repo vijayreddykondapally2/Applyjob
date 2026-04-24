@@ -88,7 +88,7 @@ def run_all_parallel():
         print("🛑 All agents stopped.")
 
 def main():
-    load_dotenv()
+    # Environment variables are managed by the parent process or system
     
     parser = argparse.ArgumentParser(description="Unified Job Application Runner")
     parser.add_argument("portal", nargs="?", choices=["linkedin", "naukri", "foundit", "monster", "all", "parallel"], 
