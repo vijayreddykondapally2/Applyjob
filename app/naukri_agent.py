@@ -85,11 +85,14 @@ class NaukriApplyAgent:
                 pass
 
         headless = should_run_headless()
-        print(f"Launching browser for Naukri... (headless={headless})")
+        # FAILSAFE: If env says HEADLESS=true, always obey it
+        if os.getenv("HEADLESS", "").lower() == "true":
+            headless = True
+        log_info("naukri", f"Launching browser (headless={headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
             headless=headless,
-            args=["--start-maximized", "--disable-blink-features=AutomationControlled"],
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
         self.page = self.context.new_page()
         self.page.set_default_timeout(60000)

@@ -88,10 +88,14 @@ class LinkedInApplyAgent:
             except Exception:
                 pass
 
+        # FAILSAFE: If env says HEADLESS=true, always obey it
+        if os.getenv("HEADLESS", "").lower() == "true":
+            self.headless = True
         log_info("linkedin", f"Launching browser (headless={self.headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=self.user_data_dir,
             headless=self.headless,
+            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         return self

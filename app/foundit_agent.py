@@ -80,11 +80,14 @@ class FounditApplyAgent:
 
         time.sleep(1)
         headless = should_run_headless()
-        print(f"Launching browser for Foundit... (headless={headless})")
+        # FAILSAFE: If env says HEADLESS=true, always obey it
+        if os.getenv("HEADLESS", "").lower() == "true":
+            headless = True
+        log_info("foundit", f"Launching browser (headless={headless})")
         self.context = self.playwright.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
             headless=headless,
-            args=["--start-maximized",
+            args=["--no-sandbox",
                   "--disable-blink-features=AutomationControlled"],
         )
         self.page = self.context.new_page()

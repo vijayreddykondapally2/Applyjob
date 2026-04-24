@@ -57,11 +57,9 @@ def get_user_env(user_id: int, portals: List[str]) -> Dict[str, str]:
     env["JOB_LOCATION"] = settings.get("job_location", "India")
     env["MAX_JOBS"] = str(settings.get("max_jobs", 25))
     
-    # Force headless if on Hugging Face or on Linux without an X server (no GUI)
-    if is_on_huggingface or (is_linux and not has_display):
-        env["HEADLESS"] = "true"
-    else:
-        env["HEADLESS"] = "true" if settings.get("headless") else "false"
+    # ALWAYS force headless in production. There is NEVER a GUI.
+    # Previous conditional logic caused edge-case failures.
+    env["HEADLESS"] = "true"
         
     env["EASY_APPLY_ONLY"] = "true" if settings.get("easy_apply_only") else "false"
 
