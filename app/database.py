@@ -163,16 +163,19 @@ def create_user(email: str, password: str, full_name: str = "") -> Optional[int]
     try:
         with get_db() as conn:
             cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO users (email, password_hash, full_name) VALUES (%s, %s, %s)" if DB_URL else
-                "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
-                (email.lower().strip(), pw_hash, full_name.strip()),
-            )
-            # In Postgres, we use cur.lastrowid or RETURNING
             if DB_URL:
-                cur.execute("SELECT LASTVAL()")
+                # PostgreSQL way: use RETURNING id
+                cur.execute(
+                    "INSERT INTO users (email, password_hash, full_name) VALUES (%s, %s, %s) RETURNING id",
+                    (email.lower().strip(), pw_hash, full_name.strip()),
+                )
                 user_id = cur.fetchone()[0]
             else:
+                # SQLite way
+                cur.execute(
+                    "INSERT INTO users (email, password_hash, full_name) VALUES (?, ?, ?)",
+                    (email.lower().strip(), pw_hash, full_name.strip()),
+                )
                 user_id = cur.lastrowid
                 
             cur.execute(
@@ -185,7 +188,11 @@ def create_user(email: str, password: str, full_name: str = "") -> Optional[int]
             )
             cur.close()
             return user_id
-    except (sqlite3.IntegrityError, psycopg2.IntegrityError):
+    except (sqlite3.IntegrityError, psycopg2.IntegrityError) as e:
+        print(f"❌ Signup Integrity Error: {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Signup Error: {e}")
         return None
 
 
