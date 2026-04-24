@@ -45,6 +45,11 @@ def get_db():
         if is_postgres:
             # Connect to PostgreSQL (Supabase)
             conn = psycopg2.connect(DB_URL, connect_timeout=10)
+            with conn.cursor() as cur:
+                # Create the schema and set it as the default for this connection
+                cur.execute("CREATE SCHEMA IF NOT EXISTS applyai")
+                cur.execute("SET search_path TO applyai")
+            conn.commit()
         else:
             # Connect to local SQLite
             conn = sqlite3.connect(str(DB_PATH), timeout=10)
