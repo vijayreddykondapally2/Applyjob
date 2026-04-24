@@ -100,6 +100,7 @@ def init_db():
         
         if is_postgres:
             try:
+                # We use the raw connection for schema creation to avoid search_path issues
                 cur.execute("CREATE SCHEMA IF NOT EXISTS applyai")
                 print("✅ Schema check/creation: applyai")
             except Exception as e:
@@ -211,11 +212,16 @@ def create_user(email: str, password: str, full_name: str = "") -> Optional[int]
             cur.close()
             return user_id
     except (sqlite3.IntegrityError, psycopg2.IntegrityError) as e:
+        if "unique" in str(e).lower() or "already exists" in str(e).lower():
+            print(f"ℹ️ Signup: User {email} already exists.")
+            return None
         print(f"❌ Signup Integrity Error: {e}")
         return None
     except Exception as e:
         print(f"❌ Signup Error: {e}")
-        return None
+        # If it's a table-not-found error, we don't want to return None (which shows 'already exists')
+        # We want to raise it so the developer sees it in the logs.
+        raise e
 
 
 def verify_user(email: str, password: str) -> Optional[Dict[str, Any]]:
