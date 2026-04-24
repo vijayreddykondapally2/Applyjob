@@ -159,20 +159,23 @@
             </button>
         </div>
 
-        <!-- Search Config Summary -->
-        <div class="config-summary">
-            <div class="config-item">
-                <span class="config-label">Keywords</span>
-                <span class="config-value">{{ settings.get('job_keywords', 'Not set') }}</span>
-            </div>
-            <div class="config-item">
-                <span class="config-label">Location</span>
-                <span class="config-value">{{ settings.get('job_location', 'Not set') }}</span>
-            </div>
-            <div class="config-item">
-                <span class="config-label">Max Jobs</span>
-                <span class="config-value">{{ settings.get('max_jobs', 25) }}</span>
-            </div>
+        <!-- Search Config Summary (Quick Edit) -->
+        <div class="config-summary" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <form id="quick-settings-form" onsubmit="saveQuickSettings(event)" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label style="font-size: 0.85rem; color: #a0aec0; margin-bottom: 4px; display: block;">Keywords</label>
+                    <input type="text" id="qs-keywords" value="{{ settings.get('job_keywords', '') }}" style="width: 100%; padding: 6px 10px; background: #0f0f1a; border: 1px solid #3a3a5e; color: #fff; border-radius: 4px;">
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 150px;">
+                    <label style="font-size: 0.85rem; color: #a0aec0; margin-bottom: 4px; display: block;">Location</label>
+                    <input type="text" id="qs-location" value="{{ settings.get('job_location', '') }}" style="width: 100%; padding: 6px 10px; background: #0f0f1a; border: 1px solid #3a3a5e; color: #fff; border-radius: 4px;">
+                </div>
+                <div class="form-group" style="width: 100px;">
+                    <label style="font-size: 0.85rem; color: #a0aec0; margin-bottom: 4px; display: block;">Max Jobs</label>
+                    <input type="number" id="qs-max-jobs" value="{{ settings.get('max_jobs', 25) }}" style="width: 100%; padding: 6px 10px; background: #0f0f1a; border: 1px solid #3a3a5e; color: #fff; border-radius: 4px;">
+                </div>
+                <button type="submit" class="btn btn-sm btn-ghost" style="height: 34px; border: 1px solid #4f46e5; color: #4f46e5;">Save Settings</button>
+            </form>
         </div>
     </div>
 
@@ -280,6 +283,29 @@
 
 {% block scripts %}
 <script>
+    function saveQuickSettings(e) {
+        e.preventDefault();
+        const keywords = document.getElementById('qs-keywords').value;
+        const location = document.getElementById('qs-location').value;
+        const maxJobs = document.getElementById('qs-max-jobs').value;
+        
+        const formData = new FormData();
+        formData.append('setting_job_keywords', keywords);
+        formData.append('setting_job_location', location);
+        formData.append('setting_max_jobs', maxJobs);
+
+        fetch('/api/settings', {
+            method: 'POST',
+            body: formData
+        }).then(r => {
+            if (r.ok) {
+                alert('Settings saved successfully!');
+            } else {
+                alert('Failed to save settings.');
+            }
+        });
+    }
+
     function getSelectedPortals() {
         const portals = [];
         document.querySelectorAll('.portal-check input:checked').forEach(cb => {

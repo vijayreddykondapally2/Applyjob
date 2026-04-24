@@ -146,7 +146,7 @@ def start_run(user_id: int, portals: List[str]) -> Dict[str, Any]:
     try:
         python_exe = sys.executable
         proc = subprocess.Popen(
-            [python_exe, "main.py", portal_arg],
+            [python_exe, "-u", "main.py", portal_arg],
             stdout=open(log_path, "a"),
             stderr=subprocess.STDOUT,
             env=env,

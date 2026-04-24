@@ -151,9 +151,12 @@ def dashboard():
 # Profile & Credentials
 # ═══════════════════════════════════════════════════════════════════════════════
 
+from werkzeug.utils import secure_filename
+
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile_editor():
+    from app.database import user_data_dir
     if request.method == "POST":
         # Save profile fields
         profile_fields = {}
@@ -180,6 +183,21 @@ def profile_editor():
 
             # Everything else is profile data
             profile_fields[key] = value
+
+        # Handle file upload
+        resume_file = request.files.get("resume_file")
+        if resume_file and resume_file.filename:
+            filename = secure_filename(resume_file.filename)
+            save_dir = user_data_dir(current_user.id)
+            save_path = save_dir / filename
+            resume_file.save(str(save_path))
+            profile_fields["resume_path"] = str(save_path)
+            # Make sure it can be accessed locally by the python scripts 
+        else:
+            # retain old resume path if no new file is uploaded
+            old_profile = get_profile(current_user.id)
+            if "resume_path" in old_profile:
+                profile_fields["resume_path"] = old_profile["resume_path"]
 
         save_profile(current_user.id, profile_fields)
         save_credentials_bulk(current_user.id, creds)
@@ -238,6 +256,23 @@ def api_stop():
 @login_required
 def api_status():
     return jsonify(get_user_status(current_user.id))
+
+
+@app.route("/api/settings", methods=["POST"])
+@login_required
+def api_settings():
+    data = request.form
+    settings_data = get_settings(current_user.id) # get current
+    
+    if "setting_job_keywords" in data:
+        settings_data["job_keywords"] = data["setting_job_keywords"]
+    if "setting_job_location" in data:
+        settings_data["job_location"] = data["setting_job_location"]
+    if "setting_max_jobs" in data:
+        settings_data["max_jobs"] = data["setting_max_jobs"]
+        
+    save_settings(current_user.id, settings_data)
+    return jsonify({"status": "success"})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
