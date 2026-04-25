@@ -4,6 +4,7 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV HEADLESS=true
 
 # Install system dependencies for Playwright
 RUN apt-get update && apt-get install -y \
@@ -45,12 +46,13 @@ RUN playwright install-deps chromium
 # Copy the rest of the application
 COPY . .
 
-# Create data directory for SQLite + per-user data
+# Use HuggingFace persistent storage (/data) so browser sessions survive rebuilds.
+# If /data exists (HF persistent storage enabled), symlink /app/data → /data
+# Otherwise, create /app/data as a regular directory.
 RUN mkdir -p /app/data
 
 # Expose the Web UI port
-# Expose default port
 EXPOSE 5001
 
-# Production: use gunicorn with multiple workers + threads. Bind to PORT env var.
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 4 --threads 4 --timeout 120 web_app:app"]
+# Startup: link persistent storage if available, then run gunicorn
+CMD ["sh", "-c", "if [ -d /data ]; then rm -rf /app/data && ln -s /data /app/data && echo 'Linked /app/data -> /data (persistent)'; else echo 'Using /app/data (ephemeral)'; fi && gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 4 --threads 4 --timeout 120 web_app:app"]
