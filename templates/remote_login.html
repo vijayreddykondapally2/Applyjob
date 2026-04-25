@@ -40,17 +40,23 @@ let refreshInterval = null;
 const portal = new URLSearchParams(window.location.search).get('portal') || 'linkedin';
 
 async function startSession() {
-    const response = await fetch('/api/remote/start', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({portal: portal})
-    });
-    const result = await response.json();
-    if (result.success) {
-        document.getElementById('loading-overlay').style.display = 'none';
-        startRefreshing();
-    } else {
-        alert("Failed to start remote session.");
+    try {
+        const response = await fetch('/api/remote/start', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({portal: portal})
+        });
+        const result = await response.json();
+        if (result.success) {
+            document.getElementById('loading-overlay').style.display = 'none';
+            startRefreshing();
+        } else {
+            document.getElementById('loading-overlay').innerText = "Failed: " + result.error;
+            document.getElementById('loading-overlay').style.color = "red";
+        }
+    } catch (err) {
+        document.getElementById('loading-overlay').innerText = "Network Error: " + err;
+        document.getElementById('loading-overlay').style.color = "red";
     }
 }
 

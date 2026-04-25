@@ -347,8 +347,8 @@ def api_status():
 @login_required
 def api_remote_start():
     portal = request.json.get("portal", "linkedin")
-    session = start_remote_session(current_user.id, portal)
-    return jsonify({"success": session is not None})
+    result = start_remote_session(current_user.id, portal)
+    return jsonify(result)
 
 @app.route("/api/remote/stop", methods=["POST"])
 @login_required

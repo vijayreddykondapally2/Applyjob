@@ -91,11 +91,13 @@ def start_remote_session(user_id, portal="linkedin"):
     
     for _ in range(20):
         if user_id in _active_sessions:
-            return _active_sessions[user_id]
+            return {"success": True, "session": _active_sessions[user_id]}
         if user_id in _launch_errors:
-            return None
+            error_msg = _launch_errors[user_id]
+            print(f"Abort start: {error_msg}")
+            return {"success": False, "error": error_msg}
         time.sleep(1)
-    return None
+    return {"success": False, "error": "Timeout waiting for browser to start (20s)"}
 
 def stop_remote_session(user_id):
     session = _active_sessions.pop(user_id, None)
