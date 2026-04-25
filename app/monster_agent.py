@@ -79,7 +79,7 @@ class MonsterApplyAgent:
     # ─── Login ────────────────────────────────────────────────────────────
 
     def login(self):
-        print("Navigating to Monster/Foundit Login...")
+        log_info("monster", "Opening login page...")
         # Monster India redirects to foundit.in
         self.page.goto("https://www.foundit.in/rio/login/seeker", wait_until="load")
         self.page.wait_for_timeout(5000)
@@ -111,11 +111,13 @@ class MonsterApplyAgent:
 
             if "linkedin.com" in popup.url:
                 if popup.locator("#username").count() > 0:
-                    print("  -> Filling LinkedIn credentials in popup...")
                     email = os.getenv("LINKEDIN_EMAIL", "")
                     password = os.getenv("LINKEDIN_PASSWORD", "")
+                    log_step("monster", f"Entering LinkedIn email: {email[:4]}***")
                     popup.fill("#username", email)
+                    log_step("monster", "Entering LinkedIn password: ••••••")
                     popup.fill("#password", password)
+                    log_step("monster", "Clicking Sign In...")
                     popup.click("button[type='submit']")
                     popup.wait_for_load_state("load")
 
@@ -123,17 +125,18 @@ class MonsterApplyAgent:
                 try:
                     allow_btn = popup.locator("button:has-text('Allow'), button:has-text('Agree & Confirm')").first
                     if allow_btn.is_visible(timeout=10000):
-                        print("  -> Clicking 'Allow' on LinkedIn permission screen...")
+                        log_step("monster", "Clicking 'Allow' on LinkedIn permission...")
                         allow_btn.click()
                 except: pass
 
-            print("  -> Waiting for Dashboard...")
+            log_info("monster", "Waiting for login to complete...")
             for _ in range(30):
                 if "/dashboard" in self.page.url or self.page.locator(".profile-icon, .userName").count() > 0:
                     log_ok("monster", "Login successful!")
                     return
                 self.page.wait_for_timeout(1000)
             
+            log_fail("monster", f"Login timed out (URL: {self.page.url})")
         except Exception as e:
             log_fail("monster", f"Login error: {e}")
 

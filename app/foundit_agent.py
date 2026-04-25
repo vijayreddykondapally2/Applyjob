@@ -163,16 +163,18 @@ class FounditApplyAgent:
             
             popup = popup_info.value
             popup.wait_for_load_state("load")
-            print(f"  -> LinkedIn Popup opened: {popup.url}")
+            log_step("foundit", f"LinkedIn popup opened: {popup.url[:50]}...")
 
             # If not already logged in in the popup
             if "linkedin.com" in popup.url:
                 if popup.locator("#username").count() > 0:
-                    print("  -> Filling LinkedIn credentials in popup...")
                     email = os.getenv("LINKEDIN_EMAIL", "")
                     password = os.getenv("LINKEDIN_PASSWORD", "")
+                    log_step("foundit", f"Entering LinkedIn email: {email[:4]}***")
                     popup.fill("#username", email)
+                    log_step("foundit", "Entering LinkedIn password: ••••••")
                     popup.fill("#password", password)
+                    log_step("foundit", "Clicking Sign In...")
                     popup.click("button[type='submit']")
                     popup.wait_for_load_state("load")
 
@@ -180,24 +182,24 @@ class FounditApplyAgent:
                 try:
                     allow_btn = popup.locator("button:has-text('Allow'), button:has-text('Agree & Confirm')").first
                     if allow_btn.is_visible(timeout=10000):
-                        print("  -> Clicking 'Allow' on LinkedIn permission screen...")
+                        log_step("foundit", "Clicking 'Allow' on LinkedIn permission screen...")
                         allow_btn.click()
                 except:
                     pass
 
-            print("  -> Waiting for Foundit to process the login...")
+            log_info("foundit", "Waiting for login to complete...")
             # Wait for the main page to reach the dashboard
             for _ in range(30):
                 if "/dashboard" in self.page.url or self.page.locator(".profile-icon, .userName").count() > 0:
-                    print("✅ Foundit Login Successful!")
+                    log_ok("foundit", "Login successful!")
                     self._session_start = time.time()
                     return
                 self._safe_wait(1000)
             
-            print(f"  !! Login timed out. Current URL: {self.page.url}")
+            log_fail("foundit", f"Login timed out (URL: {self.page.url})")
 
         except Exception as e:
-            print(f"❌ Foundit Login Error: {e}")
+            log_fail("foundit", f"Login error: {e}")
 
     # ─── Bulk Apply (main entry) ──────────────────────────────────────────
 

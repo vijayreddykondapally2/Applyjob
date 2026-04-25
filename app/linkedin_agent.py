@@ -155,23 +155,44 @@ class LinkedInApplyAgent:
 
         log_step("linkedin", "Clicking 'Sign In' button...")
         self.page.click('button[type="submit"]')
-        self.page.wait_for_timeout(4000)
-        if "feed" in self.page.url:
+        self.page.wait_for_timeout(5000)
+        
+        # Check where we landed after clicking Sign In
+        current_url = self.page.url.lower()
+        
+        if "/feed" in current_url or "/jobs" in current_url:
             log_ok("linkedin", "Login successful!")
             return
-        if "checkpoint" in self.page.url or "challenge" in self.page.url:
-            if not allow_manual_checkpoint:
-                log_fail("linkedin", "Login blocked — CAPTCHA/checkpoint detected (no manual handler)")
-                raise RuntimeError("Checkpoint detected. Enable manual checkpoint handling.")
-            log_wait("linkedin", "CAPTCHA/checkpoint detected — waiting for manual completion...")
-            self._wait_for_login(timeout_seconds=manual_timeout_seconds)
-            return
-        if allow_manual_checkpoint:
-            log_wait("linkedin", "Login did not reach feed — waiting for manual completion...")
-            self._wait_for_login(timeout_seconds=manual_timeout_seconds)
-            return
-        log_fail("linkedin", "Login failed — could not reach LinkedIn feed")
-        raise RuntimeError("LinkedIn login failed.")
+        
+        if "checkpoint" in current_url or "challenge" in current_url:
+            log_fail("linkedin", "LinkedIn CAPTCHA/2FA detected — cannot solve in headless mode")
+            log_info("linkedin", "Waiting 60s in case it resolves automatically...")
+            # Wait up to 60s — some challenges auto-resolve
+            for i in range(30):
+                self.page.wait_for_timeout(2000)
+                url = self.page.url.lower()
+                if "/feed" in url or "/jobs" in url:
+                    log_ok("linkedin", "Challenge resolved! Login successful!")
+                    return
+            log_fail("linkedin", "CAPTCHA/2FA could not be resolved automatically")
+            raise RuntimeError("LinkedIn login blocked by CAPTCHA/2FA. Try logging in manually first to clear the challenge.")
+        
+        if "login" in current_url:
+            log_fail("linkedin", "Login failed — credentials may be incorrect")
+            log_info("linkedin", f"Current URL: {self.page.url}")
+            raise RuntimeError("LinkedIn login failed — check email/password in Profile settings.")
+        
+        # Unknown page — wait a bit and check again
+        log_info("linkedin", f"Unexpected page after login: {self.page.url}")
+        log_info("linkedin", "Waiting 30s to see if redirect happens...")
+        for i in range(15):
+            self.page.wait_for_timeout(2000)
+            url = self.page.url.lower()
+            if "/feed" in url or "/jobs" in url:
+                log_ok("linkedin", "Login successful (delayed redirect)!")
+                return
+        log_fail("linkedin", "Could not reach LinkedIn feed after login")
+        raise RuntimeError("LinkedIn login failed — unexpected redirect.")
 
     def _wait_for_login(self, timeout_seconds: int = 180) -> None:
         assert self.page is not None
