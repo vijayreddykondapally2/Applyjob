@@ -16,46 +16,66 @@ def start_remote_session(user_id, portal="linkedin"):
     
     profile_dir = user_browser_profile_dir(user_id, portal)
     
+    # Error tracking
+    _launch_errors = {}
+
     def run_browser():
-        p = sync_playwright().start()
-        # We use xvfb-run in the shell, but here we just launch
-        # In Docker, we will ensure DISPLAY is set or use xvfb
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=profile_dir,
-            headless=False, # WE WANT TO SEE IT (in the virtual buffer)
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"]
-        )
-        page = browser.pages[0] if browser.pages else browser.new_page()
-        
-        urls = {
-            "linkedin": "https://www.linkedin.com/login",
-            "naukri": "https://www.naukri.com/nlogin/login",
-            "foundit": "https://www.foundit.in/rio/login/seeker",
-            "monster": "https://www.foundit.in/rio/login/seeker"
-        }
-        page.goto(urls.get(portal, "https://www.google.com"))
-        
-        _active_sessions[user_id] = {
-            "page": page,
-            "context": browser,
-            "playwright": p,
-            "last_active": time.time()
-        }
-        
-        # Monitor for inactivity and close
-        while user_id in _active_sessions:
-            if time.time() - _active_sessions[user_id]["last_active"] > 300: # 5 min timeout
-                stop_remote_session(user_id)
-                break
-            time.sleep(10)
+        try:
+            # 1. Start Xvfb if not already running
+            display = f":{99 + user_id}"
+            os.environ["DISPLAY"] = display
+            import subprocess
+            # Start Xvfb in background
+            subprocess.Popen(["Xvfb", display, "-screen", "0", "1280x1024x24"], 
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(2) # Wait for Xvfb
+
+            p = sync_playwright().start()
+            print(f"[REMOTE] Launching browser for user {user_id} on display {display}")
+            
+            browser = p.chromium.launch_persistent_context(
+                user_data_dir=profile_dir,
+                headless=False,
+                args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"]
+            )
+            page = browser.pages[0] if browser.pages else browser.new_page()
+            page.set_viewport_size({"width": 1280, "height": 800})
+            
+            urls = {
+                "linkedin": "https://www.linkedin.com/login",
+                "naukri": "https://www.naukri.com/nlogin/login",
+                "foundit": "https://www.foundit.in/rio/login/seeker",
+                "monster": "https://www.foundit.in/rio/login/seeker"
+            }
+            page.goto(urls.get(portal, "https://www.google.com"), wait_until="domcontentloaded")
+            
+            _active_sessions[user_id] = {
+                "page": page,
+                "context": browser,
+                "playwright": p,
+                "last_active": time.time(),
+                "display": display
+            }
+            
+            while user_id in _active_sessions:
+                if time.time() - _active_sessions[user_id]["last_active"] > 600: # 10 min timeout
+                    stop_remote_session(user_id)
+                    break
+                time.sleep(10)
+        except Exception as e:
+            print(f"[REMOTE ERROR] {e}")
+            _launch_errors[user_id] = str(e)
 
     thread = threading.Thread(target=run_browser, daemon=True)
     thread.start()
     
-    # Wait for session to initialize
-    for _ in range(10):
+    # Wait for session to initialize (increased to 20s)
+    for _ in range(20):
         if user_id in _active_sessions:
             return _active_sessions[user_id]
+        if user_id in _launch_errors:
+            print(f"Abort start: {_launch_errors[user_id]}")
+            return None
         time.sleep(1)
     return None
 
