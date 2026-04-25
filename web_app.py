@@ -33,6 +33,7 @@ from app.database import (
     get_applications,
     get_application_stats,
     get_run_history,
+    user_browser_profile_dir,
 )
 from app.task_manager import start_run, stop_run, get_user_status
 from app.remote_control import (
@@ -375,8 +376,9 @@ def api_remote_view():
 @login_required
 def api_remote_image():
     """Serve the latest remote screenshot from the data dir."""
-    from flask import send_from_directory
-    profile_dir = user_browser_profile_dir(current_user.id, "linkedin")
+    from flask import send_from_directory, request
+    portal = request.args.get("portal", "linkedin")
+    profile_dir = user_browser_profile_dir(current_user.id, portal)
     return send_from_directory(profile_dir, "remote_view.jpg", cache_timeout=0)
 
 

@@ -44,7 +44,8 @@ def start_remote_session(user_id, portal="linkedin"):
                 "page": page,
                 "context": browser,
                 "playwright": p,
-                "last_active": time.time()
+                "last_active": time.time(),
+                "portal": portal
             }
             
             while user_id in _active_sessions:
@@ -96,10 +97,11 @@ def remote_command(user_id, cmd, params):
             page.keyboard.press(key)
         elif cmd == "screenshot":
             # Save to user's persistent data dir for better permissions
-            profile_dir = user_browser_profile_dir(user_id, "linkedin") # base dir
+            portal = session.get("portal", "linkedin")
+            profile_dir = user_browser_profile_dir(user_id, portal) # base dir
             path = os.path.join(profile_dir, "remote_view.jpg")
             page.screenshot(path=path, type="jpeg", quality=60)
-            return {"success": True, "filename": "remote_view.jpg"}
+            return {"success": True, "filename": "remote_view.jpg", "portal": portal}
         
         return {"success": True}
     except Exception as e:
