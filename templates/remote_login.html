@@ -58,9 +58,9 @@ function startRefreshing() {
         const response = await fetch('/api/remote/view');
         const result = await response.json();
         if (result.success) {
-            document.getElementById('remote-view').src = result.url;
+            document.getElementById('remote-view').src = '/api/remote/image?t=' + Date.now();
         }
-    }, 1000);
+    }, 1500);
 }
 
 async function stopSession() {

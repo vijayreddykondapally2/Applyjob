@@ -371,6 +371,15 @@ def api_remote_view():
     return jsonify(result)
 
 
+@app.route("/api/remote/image")
+@login_required
+def api_remote_image():
+    """Serve the latest remote screenshot from the data dir."""
+    from flask import send_from_directory
+    profile_dir = user_browser_profile_dir(current_user.id, "linkedin")
+    return send_from_directory(profile_dir, "remote_view.jpg", cache_timeout=0)
+
+
 @app.route("/api/remote/sync", methods=["POST"])
 @login_required
 def api_remote_sync():

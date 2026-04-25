@@ -95,11 +95,11 @@ def remote_command(user_id, cmd, params):
             key = params.get("key")
             page.keyboard.press(key)
         elif cmd == "screenshot":
-            static_dir = os.path.join(os.getcwd(), "static")
-            os.makedirs(static_dir, exist_ok=True)
-            path = os.path.join(static_dir, f"remote_{user_id}.jpg")
+            # Save to user's persistent data dir for better permissions
+            profile_dir = user_browser_profile_dir(user_id, "linkedin") # base dir
+            path = os.path.join(profile_dir, "remote_view.jpg")
             page.screenshot(path=path, type="jpeg", quality=60)
-            return {"success": True, "url": f"/static/remote_{user_id}.jpg?t={time.time()}"}
+            return {"success": True, "filename": "remote_view.jpg"}
         
         return {"success": True}
     except Exception as e:
