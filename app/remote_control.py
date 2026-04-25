@@ -15,27 +15,16 @@ def start_remote_session(user_id, portal="linkedin"):
         return _active_sessions[user_id]
     
     profile_dir = user_browser_profile_dir(user_id, portal)
-    
-    # Error tracking
     _launch_errors = {}
 
     def run_browser():
         try:
-            # 1. Start Xvfb if not already running
-            display = f":{99 + user_id}"
-            os.environ["DISPLAY"] = display
-            import subprocess
-            # Start Xvfb in background
-            subprocess.Popen(["Xvfb", display, "-screen", "0", "1280x1024x24"], 
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(2) # Wait for Xvfb
-
             p = sync_playwright().start()
-            print(f"[REMOTE] Launching browser for user {user_id} on display {display}")
+            print(f"[REMOTE] Launching headless browser for interactive login: {portal}")
             
             browser = p.chromium.launch_persistent_context(
                 user_data_dir=profile_dir,
-                headless=False,
+                headless=True, # HEADLESS works fine for screenshots/clicks!
                 args=["--no-sandbox", "--disable-blink-features=AutomationControlled", "--disable-dev-shm-usage"]
             )
             page = browser.pages[0] if browser.pages else browser.new_page()
@@ -48,20 +37,21 @@ def start_remote_session(user_id, portal="linkedin"):
                 "monster": "https://www.foundit.in/rio/login/seeker"
             }
             page.goto(urls.get(portal, "https://www.google.com"), wait_until="domcontentloaded")
+            # Give it a second to render
+            time.sleep(2)
             
             _active_sessions[user_id] = {
                 "page": page,
                 "context": browser,
                 "playwright": p,
-                "last_active": time.time(),
-                "display": display
+                "last_active": time.time()
             }
             
             while user_id in _active_sessions:
-                if time.time() - _active_sessions[user_id]["last_active"] > 600: # 10 min timeout
+                if time.time() - _active_sessions[user_id]["last_active"] > 600:
                     stop_remote_session(user_id)
                     break
-                time.sleep(10)
+                time.sleep(5)
         except Exception as e:
             print(f"[REMOTE ERROR] {e}")
             _launch_errors[user_id] = str(e)
@@ -69,12 +59,10 @@ def start_remote_session(user_id, portal="linkedin"):
     thread = threading.Thread(target=run_browser, daemon=True)
     thread.start()
     
-    # Wait for session to initialize (increased to 20s)
     for _ in range(20):
         if user_id in _active_sessions:
             return _active_sessions[user_id]
         if user_id in _launch_errors:
-            print(f"Abort start: {_launch_errors[user_id]}")
             return None
         time.sleep(1)
     return None
