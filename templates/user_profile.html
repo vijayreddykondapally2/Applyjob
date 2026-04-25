@@ -34,7 +34,10 @@
         </div>
         <!-- Portal Credentials -->
         <div class="card" style="margin-bottom: 1.5rem;">
-            <h2 class="section-title" style="margin-top:0;">🔑 Portal Credentials</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 class="section-title" style="margin:0;">🔑 Portal Credentials</h2>
+                <button type="button" onclick="syncSessions()" class="btn" style="background: #10b981; color: white; font-weight: 600; font-size: 13px; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer;">🔄 Sync LinkedIn to Foundit/Monster</button>
+            </div>
             <div class="creds-grid">
                 <!-- LinkedIn -->
                 <div class="cred-group">
@@ -280,6 +283,25 @@ async function uploadCookies(portal) {
         }
     } catch (err) {
         alert("Failed to upload cookies: " + err);
+    }
+}
+
+async function syncSessions() {
+    if (!confirm("This will copy your LinkedIn login to Foundit and Monster. Continue?")) return;
+    
+    try {
+        const response = await fetch('/api/remote/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert("🚀 Session synced! Foundit and Monster will now use your LinkedIn login.");
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (err) {
+        alert("Failed to sync sessions: " + err);
     }
 }
 </script>

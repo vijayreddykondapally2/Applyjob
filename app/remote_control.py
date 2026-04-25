@@ -116,3 +116,29 @@ def remote_command(user_id, cmd, params):
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+def sync_portal_sessions(user_id):
+    """Copy the LinkedIn profile to Foundit and Monster to sync logins."""
+    import shutil
+    from app.database import user_browser_profile_dir
+    
+    if user_id in _active_sessions:
+        return {"success": False, "error": "Cannot sync while a remote login session is active. Please stop it first."}
+    
+    try:
+        src = user_browser_profile_dir(user_id, "linkedin")
+        destinations = ["foundit", "monster"]
+        
+        for dest_portal in destinations:
+            dst = user_browser_profile_dir(user_id, dest_portal)
+            # Remove existing dest to ensure clean copy
+            if os.path.exists(dst):
+                shutil.rmtree(dst)
+            # Copy LinkedIn profile
+            shutil.copytree(src, dst)
+            print(f"[SYNC] Cloned LinkedIn profile to {dest_portal} for user {user_id}")
+            
+        return {"success": True, "message": "Successfully synced LinkedIn session to Foundit and Monster!"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}

@@ -35,7 +35,9 @@ from app.database import (
     get_run_history,
 )
 from app.task_manager import start_run, stop_run, get_user_status
-from app.remote_control import start_remote_session, stop_remote_session, remote_command, get_session
+from app.remote_control import (
+    start_remote_session, stop_remote_session, remote_command, get_session, sync_portal_sessions
+)
 
 load_dotenv()
 
@@ -366,6 +368,13 @@ def api_remote_command():
 @login_required
 def api_remote_view():
     result = remote_command(current_user.id, "screenshot", {})
+    return jsonify(result)
+
+
+@app.route("/api/remote/sync", methods=["POST"])
+@login_required
+def api_remote_sync():
+    result = sync_portal_sessions(current_user.id)
     return jsonify(result)
 
 
