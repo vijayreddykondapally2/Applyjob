@@ -49,10 +49,6 @@ def get_user_env(user_id: int, portals: List[str]) -> Dict[str, str]:
     env["ENABLE_AI_ANSWERING"] = "true" if settings.get("groq_api_key") else "false"
 
     # Job search
-    is_on_huggingface = os.getenv("SPACE_ID") is not None
-    has_display = os.getenv("DISPLAY") is not None
-    is_linux = sys.platform.startswith("linux")
-    
     env["JOB_KEYWORDS"] = settings.get("job_keywords", "ETL Testing")
     env["JOB_LOCATION"] = settings.get("job_location", "India")
     env["MAX_JOBS"] = str(settings.get("max_jobs", 25))

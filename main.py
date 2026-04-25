@@ -13,12 +13,13 @@ from dotenv import load_dotenv
 def _force_headless_if_needed():
     """Set HEADLESS=true if we detect a non-GUI environment."""
     is_hf = os.getenv("SPACE_ID") is not None
+    is_railway = os.getenv("RAILWAY") is not None or os.getenv("RAILWAY_ENVIRONMENT") is not None
     is_linux = sys.platform.startswith("linux")
     has_display = os.getenv("DISPLAY") is not None
     is_docker = os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
     is_root = os.path.expanduser("~") == "/root"
     
-    if is_hf or is_docker or is_root or (is_linux and not has_display):
+    if is_hf or is_railway or is_docker or is_root or (is_linux and not has_display):
         os.environ["HEADLESS"] = "true"
         # Also force auto-submit in headless mode
         os.environ["MANUAL_LOGIN_SUBMIT"] = "false"

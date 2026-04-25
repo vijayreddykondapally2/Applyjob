@@ -45,9 +45,10 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "applyjob-super-secret-key-change-in-prod")
 
-# Session configuration for better persistence on proxies (HuggingFace)
+# Session configuration for better persistence on proxies (Railway / cloud)
+_is_production = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("SPACE_ID") or os.getenv("RAILWAY"))
 app.config.update(
-    SESSION_COOKIE_SECURE=True if os.getenv("SPACE_ID") else False,
+    SESSION_COOKIE_SECURE=_is_production,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=604800, # 1 week

@@ -5,8 +5,9 @@ FROM python:3.11-slim
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV HEADLESS=true
+ENV RAILWAY=true
 
-# Install system dependencies for Playwright
+# Install system dependencies for Playwright + Xvfb for Remote Login
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -28,9 +29,6 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpq-dev \
     xvfb \
-    x11vnc \
-    fluxbox \
-    dbus-x11 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -50,13 +48,12 @@ RUN playwright install-deps chromium
 # Copy the rest of the application
 COPY . .
 
-# Use HuggingFace persistent storage (/data) so browser sessions survive rebuilds.
-# If /data exists (HF persistent storage enabled), symlink /app/data → /data
-# Otherwise, create /app/data as a regular directory.
+# Create data directory (Railway volumes mount here)
 RUN mkdir -p /app/data
 
-# Expose the Web UI port
-EXPOSE 5001
+# Expose the port (Railway sets $PORT automatically)
+EXPOSE ${PORT:-5001}
 
-# Startup: link persistent storage if available, then run gunicorn
-CMD ["sh", "-c", "if [ -d /data ]; then rm -rf /app/data && ln -s /data /app/data && echo 'Linked /app/data -> /data (persistent)'; else echo 'Using /app/data (ephemeral)'; fi && gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 4 --threads 4 --timeout 120 web_app:app"]
+# Use gunicorn with sync workers (required for Playwright threads).
+# Railway provides $PORT automatically.
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5001} --workers 2 --threads 4 --timeout 300 web_app:app"]

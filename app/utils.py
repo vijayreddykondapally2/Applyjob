@@ -122,17 +122,22 @@ def should_run_headless() -> bool:
     platform = sys.platform
     display = os.getenv("DISPLAY")
     space_id = os.getenv("SPACE_ID")
+    railway = os.getenv("RAILWAY") or os.getenv("RAILWAY_ENVIRONMENT")
     headless_env = os.getenv("HEADLESS", "")
     is_docker = os.path.exists("/.dockerenv") or os.path.exists("/run/.containerenv")
     is_root_user = os.path.expanduser("~") == "/root"
     
     print(f"[HEADLESS CHECK] platform={platform}, DISPLAY={display}, "
-          f"SPACE_ID={space_id}, HEADLESS={headless_env}, "
+          f"SPACE_ID={space_id}, RAILWAY={railway}, HEADLESS={headless_env}, "
           f"docker={is_docker}, root_user={is_root_user}")
     
-    # Force headless if on Hugging Face
+    # Force headless if on any cloud platform
     if space_id is not None:
         print("[HEADLESS CHECK] → HEADLESS=True (HuggingFace Space detected)")
+        return True
+    
+    if railway is not None:
+        print("[HEADLESS CHECK] → HEADLESS=True (Railway detected)")
         return True
     
     # Force headless if in a Docker container
