@@ -305,6 +305,27 @@ def api_stop():
     return jsonify(result)
 
 
+@app.route("/api/upload_cookies", methods=["POST"])
+@login_required
+def upload_cookies():
+    """Upload a cookies.json file for a specific portal."""
+    if 'file' not in request.files:
+        return jsonify({"success": False, "error": "No file part"}), 400
+    
+    file = request.files['file']
+    portal = request.form.get("portal", "linkedin")
+    
+    if file.filename == '':
+        return jsonify({"success": False, "error": "No selected file"}), 400
+    
+    if file:
+        profile_dir = user_browser_profile_dir(current_user.id, portal)
+        file.save(os.path.join(profile_dir, "cookies.json"))
+        return jsonify({"success": True, "message": f"Cookies for {portal} uploaded successfully! They will be imported on the next run."})
+    
+    return jsonify({"success": False, "error": "Unknown error"}), 500
+
+
 @app.route("/api/status")
 @login_required
 def api_status():

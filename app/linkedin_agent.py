@@ -98,6 +98,24 @@ class LinkedInApplyAgent:
             args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
         )
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+
+        # COOKIE IMPORT: If cookies.json exists in user data dir, import them
+        cookie_path = os.path.join(self.user_data_dir, "cookies.json")
+        if os.path.exists(cookie_path):
+            try:
+                with open(cookie_path, 'r') as f:
+                    cookies = json.load(f)
+                    # Convert from some common extension formats if needed
+                    if isinstance(cookies, dict) and "cookies" in cookies:
+                        cookies = cookies["cookies"]
+                    
+                    # Apply cookies to context
+                    self.context.add_cookies(cookies)
+                    log_ok("linkedin", f"Imported {len(cookies)} cookies from cookies.json")
+                    # Delete the file after import to avoid stale sessions/security
+                    os.remove(cookie_path)
+            except Exception as e:
+                log_fail("linkedin", f"Failed to import cookies: {e}")
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:

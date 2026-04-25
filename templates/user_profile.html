@@ -53,6 +53,11 @@
                                value="{{ credentials.get('linkedin', {}).get('password', '') }}"
                                placeholder="••••••••" autocomplete="off">
                     </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        <label style="font-size: 11px; color: #666; display: block; margin-bottom: 5px;">🍪 Import Session (Optional)</label>
+                        <input type="file" id="cookies-linkedin" accept=".json" style="font-size: 10px; width: 100%;">
+                        <button type="button" onclick="uploadCookies('linkedin')" style="margin-top: 5px; font-size: 10px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 3px; cursor: pointer;">Upload Cookies</button>
+                    </div>
                 </div>
 
                 <!-- Naukri -->
@@ -71,6 +76,11 @@
                         <input type="password" name="naukri__password"
                                value="{{ credentials.get('naukri', {}).get('password', '') }}"
                                placeholder="••••••••" autocomplete="off">
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        <label style="font-size: 11px; color: #666; display: block; margin-bottom: 5px;">🍪 Import Session (Optional)</label>
+                        <input type="file" id="cookies-naukri" accept=".json" style="font-size: 10px; width: 100%;">
+                        <button type="button" onclick="uploadCookies('naukri')" style="margin-top: 5px; font-size: 10px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 3px; cursor: pointer;">Upload Cookies</button>
                     </div>
                 </div>
 
@@ -97,6 +107,11 @@
                                value="{{ credentials.get('foundit', {}).get('mobile', '') }}"
                                placeholder="9876543210" autocomplete="off">
                     </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        <label style="font-size: 11px; color: #666; display: block; margin-bottom: 5px;">🍪 Import Session (Optional)</label>
+                        <input type="file" id="cookies-foundit" accept=".json" style="font-size: 10px; width: 100%;">
+                        <button type="button" onclick="uploadCookies('foundit')" style="margin-top: 5px; font-size: 10px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 3px; cursor: pointer;">Upload Cookies</button>
+                    </div>
                 </div>
 
                 <!-- Monster -->
@@ -115,6 +130,11 @@
                         <input type="password" name="monster__password"
                                value="{{ credentials.get('monster', {}).get('password', '') }}"
                                placeholder="••••••••" autocomplete="off">
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                        <label style="font-size: 11px; color: #666; display: block; margin-bottom: 5px;">🍪 Import Session (Optional)</label>
+                        <input type="file" id="cookies-monster" accept=".json" style="font-size: 10px; width: 100%;">
+                        <button type="button" onclick="uploadCookies('monster')" style="margin-top: 5px; font-size: 10px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 3px; cursor: pointer;">Upload Cookies</button>
                     </div>
                 </div>
             </div>
@@ -229,4 +249,34 @@
         </div>
     </form>
 </div>
+
+<script>
+async function uploadCookies(portal) {
+    const fileInput = document.getElementById(`cookies-${portal}`);
+    if (!fileInput.files.length) {
+        alert("Please select a cookies.json file first.");
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('portal', portal);
+    
+    try {
+        const response = await fetch('/api/upload_cookies', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            fileInput.value = '';
+        } else {
+            alert("Error: " + result.error);
+        }
+    } catch (err) {
+        alert("Failed to upload cookies: " + err);
+    }
+}
+</script>
 {% endblock %}

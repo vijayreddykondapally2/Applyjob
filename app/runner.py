@@ -39,6 +39,8 @@ def run() -> None:
     auto_apply            = bool_env(os.getenv("AUTO_APPLY", "true"), default=True)
     keep_browser_open     = bool_env(os.getenv("KEEP_BROWSER_OPEN", "true"), default=True)
     manual_login_submit   = bool_env(os.getenv("MANUAL_LOGIN_SUBMIT", "true"), default=True)
+    allow_manual_ckpt     = bool_env(os.getenv("ALLOW_MANUAL_CHECKPOINT", "true"), default=True)
+    manual_ckpt_timeout   = int_env(os.getenv("MANUAL_CHECKPOINT_TIMEOUT", "300"), 300)
     
     # CRITICAL: In headless mode, we MUST auto-submit. No human can click the button.
     if headless:

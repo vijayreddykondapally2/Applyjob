@@ -156,10 +156,35 @@ class FounditApplyAgent:
 
         log_step("foundit", "Clicking LinkedIn social login...")
         try:
+            # Multiple possible selectors for the LinkedIn button
+            linkedin_selectors = [
+                "button:has-text('LinkedIn')",
+                "button:has-text('Sign in with LinkedIn')",
+                "a:has-text('LinkedIn')",
+                "[class*='linkedin']",
+                ".linkedin-login",
+                "a[href*='linkedin']",
+                "button[aria-label*='LinkedIn']",
+                "div:has-text('LinkedIn')"
+            ]
+            
+            # Find which selector works
+            btn = None
+            for sel in linkedin_selectors:
+                try:
+                    loc = self.page.locator(sel).first
+                    if loc.count() > 0 and loc.is_visible():
+                        btn = loc
+                        break
+                except: continue
+            
+            if not btn:
+                # Fallback to broad text search
+                btn = self.page.get_by_role("button").filter(has_text="LinkedIn").first
+            
             # We use the Popup handler to catch the LinkedIn window
             with self.page.expect_popup() as popup_info:
-                # Try multiple selectors for the LinkedIn button
-                self.page.locator("button:has-text('LinkedIn'), [class*='linkedin']").first.click()
+                btn.click()
             
             popup = popup_info.value
             popup.wait_for_load_state("load")
