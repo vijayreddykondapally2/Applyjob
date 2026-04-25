@@ -45,14 +45,43 @@ def start_remote_session(user_id, portal="linkedin"):
                 "context": browser,
                 "playwright": p,
                 "last_active": time.time(),
-                "portal": portal
+                "portal": portal,
+                "command_queue": [],
+                "results": {}
             }
             
             while user_id in _active_sessions:
-                if time.time() - _active_sessions[user_id]["last_active"] > 600:
+                session_data = _active_sessions[user_id]
+                if time.time() - session_data["last_active"] > 600:
                     stop_remote_session(user_id)
                     break
-                time.sleep(5)
+                
+                # Process queued commands safely on the browser thread
+                if session_data["command_queue"]:
+                    cmd_data = session_data["command_queue"].pop(0)
+                    cmd_id = cmd_data["id"]
+                    cmd = cmd_data["cmd"]
+                    params = cmd_data["params"]
+                    
+                    try:
+                        if cmd == "click":
+                            page.mouse.click(params.get("x"), params.get("y"))
+                            session_data["results"][cmd_id] = {"success": True}
+                        elif cmd == "type":
+                            page.keyboard.type(params.get("text"))
+                            session_data["results"][cmd_id] = {"success": True}
+                        elif cmd == "press":
+                            page.keyboard.press(params.get("key"))
+                            session_data["results"][cmd_id] = {"success": True}
+                        elif cmd == "screenshot":
+                            profile_dir = user_browser_profile_dir(user_id, portal)
+                            path = os.path.join(profile_dir, "remote_view.jpg")
+                            page.screenshot(path=path, type="jpeg", quality=60)
+                            session_data["results"][cmd_id] = {"success": True, "filename": "remote_view.jpg", "portal": portal}
+                    except Exception as e:
+                        session_data["results"][cmd_id] = {"success": False, "error": str(e)}
+                else:
+                    time.sleep(0.1) # short sleep when idle to remain responsive
         except Exception as e:
             print(f"[REMOTE ERROR] {e}")
             _launch_errors[user_id] = str(e)
@@ -77,35 +106,25 @@ def stop_remote_session(user_id):
         except:
             pass
 
+import uuid
+
 def remote_command(user_id, cmd, params):
     session = _active_sessions.get(user_id)
     if not session:
         return {"success": False, "error": "No active session"}
     
     session["last_active"] = time.time()
-    page = session["page"]
     
-    try:
-        if cmd == "click":
-            x, y = params.get("x"), params.get("y")
-            page.mouse.click(x, y)
-        elif cmd == "type":
-            text = params.get("text")
-            page.keyboard.type(text)
-        elif cmd == "press":
-            key = params.get("key")
-            page.keyboard.press(key)
-        elif cmd == "screenshot":
-            # Save to user's persistent data dir for better permissions
-            portal = session.get("portal", "linkedin")
-            profile_dir = user_browser_profile_dir(user_id, portal) # base dir
-            path = os.path.join(profile_dir, "remote_view.jpg")
-            page.screenshot(path=path, type="jpeg", quality=60)
-            return {"success": True, "filename": "remote_view.jpg", "portal": portal}
+    cmd_id = str(uuid.uuid4())
+    session["command_queue"].append({"id": cmd_id, "cmd": cmd, "params": params})
+    
+    # Wait for the browser thread to execute the command and populate results
+    for _ in range(50): # Wait up to 5 seconds
+        if cmd_id in session["results"]:
+            return session["results"].pop(cmd_id)
+        time.sleep(0.1)
         
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    return {"success": False, "error": "Command timeout (browser thread may be stuck)"}
 
 
 def sync_portal_sessions(user_id):
