@@ -107,10 +107,11 @@ def remote_command(user_id, cmd, params):
             key = params.get("key")
             page.keyboard.press(key)
         elif cmd == "screenshot":
-            path = f"static/remote_{user_id}.jpg"
-            os.makedirs("static", exist_ok=True)
-            page.screenshot(path=path, type="jpeg", quality=50)
-            return {"success": True, "url": f"/{path}?t={time.time()}"}
+            static_dir = os.path.join(os.getcwd(), "static")
+            os.makedirs(static_dir, exist_ok=True)
+            path = os.path.join(static_dir, f"remote_{user_id}.jpg")
+            page.screenshot(path=path, type="jpeg", quality=60)
+            return {"success": True, "url": f"/static/remote_{user_id}.jpg?t={time.time()}"}
         
         return {"success": True}
     except Exception as e:
