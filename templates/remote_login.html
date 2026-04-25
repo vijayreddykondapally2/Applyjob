@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Remote Login Assistant — ApplyJob AI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Remote Login Assistant</h1>
+            <p class="page-subtitle">Interact directly with the server's browser to solve CAPTCHAs or OTPs.</p>
+        </div>
+        <div class="header-actions">
+            <button onclick="stopSession()" class="btn btn-danger">Stop Session</button>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden; background: #000;">
+        <div id="remote-container" style="position: relative; width: 100%; min-height: 600px; display: flex; justify-content: center; align-items: center;">
+            <img id="remote-view" style="max-width: 100%; cursor: crosshair;" onclick="handleClick(event)">
+            <div id="loading-overlay" style="position: absolute; color: white;">Starting browser...</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 1.5rem;">
+        <h2 class="section-title">Remote Controls</h2>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <input type="text" id="remote-text" placeholder="Type text here..." class="form-control" style="flex: 1;">
+            <button onclick="sendText()" class="btn btn-primary">Send Text</button>
+            <button onclick="sendKey('Enter')" class="btn btn-secondary">Press Enter</button>
+            <button onclick="sendKey('Tab')" class="btn btn-secondary">Press Tab</button>
+        </div>
+        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+            💡 <b>How to use:</b> Click anywhere on the image above to "click" that spot in the remote browser. Use the text box above to type into the focused field.
+        </p>
+    </div>
+</div>
+
+<script>
+let refreshInterval = null;
+const portal = new URLSearchParams(window.location.search).get('portal') || 'linkedin';
+
+async function startSession() {
+    const response = await fetch('/api/remote/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({portal: portal})
+    });
+    const result = await response.json();
+    if (result.success) {
+        document.getElementById('loading-overlay').style.display = 'none';
+        startRefreshing();
+    } else {
+        alert("Failed to start remote session.");
+    }
+}
+
+function startRefreshing() {
+    refreshInterval = setInterval(async () => {
+        const response = await fetch('/api/remote/view');
+        const result = await response.json();
+        if (result.success) {
+            document.getElementById('remote-view').src = result.url;
+        }
+    }, 1000);
+}
+
+async function stopSession() {
+    clearInterval(refreshInterval);
+    await fetch('/api/remote/stop', {method: 'POST'});
+    window.location.href = '/profile';
+}
+
+async function handleClick(event) {
+    const img = event.target;
+    const rect = img.getBoundingClientRect();
+    const x = Math.round((event.clientX - rect.left) * (img.naturalWidth / img.width));
+    const y = Math.round((event.clientY - rect.top) * (img.naturalHeight / img.height));
+    
+    await fetch('/api/remote/command', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cmd: 'click', params: {x: x, y: y}})
+    });
+}
+
+async function sendText() {
+    const input = document.getElementById('remote-text');
+    const text = input.value;
+    await fetch('/api/remote/command', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cmd: 'type', params: {text: text}})
+    });
+    input.value = '';
+}
+
+async function sendKey(key) {
+    await fetch('/api/remote/command', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({cmd: 'press', params: {key: key}})
+    });
+}
+
+// Start on load
+startSession();
+</script>
+{% endblock %}

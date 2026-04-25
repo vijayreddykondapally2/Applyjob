@@ -35,6 +35,7 @@ from app.database import (
     get_run_history,
 )
 from app.task_manager import start_run, stop_run, get_user_status
+from app.remote_control import start_remote_session, stop_remote_session, remote_command, get_session
 
 load_dotenv()
 
@@ -271,6 +272,12 @@ def profile_editor():
     )
 
 
+@app.route("/remote_login")
+@login_required
+def remote_login():
+    return render_template("remote_login.html")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Application History
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -330,6 +337,36 @@ def upload_cookies():
 @login_required
 def api_status():
     return jsonify(get_user_status(current_user.id))
+
+# ─── Remote Control Routes ───────────────────────────────────────────────────
+
+@app.route("/api/remote/start", methods=["POST"])
+@login_required
+def api_remote_start():
+    portal = request.json.get("portal", "linkedin")
+    session = start_remote_session(current_user.id, portal)
+    return jsonify({"success": session is not None})
+
+@app.route("/api/remote/stop", methods=["POST"])
+@login_required
+def api_remote_stop():
+    stop_remote_session(current_user.id)
+    return jsonify({"success": True})
+
+@app.route("/api/remote/command", methods=["POST"])
+@login_required
+def api_remote_command():
+    data = request.json
+    cmd = data.get("cmd")
+    params = data.get("params", {})
+    result = remote_command(current_user.id, cmd, params)
+    return jsonify(result)
+
+@app.route("/api/remote/view")
+@login_required
+def api_remote_view():
+    result = remote_command(current_user.id, "screenshot", {})
+    return jsonify(result)
 
 
 @app.route("/api/settings", methods=["POST"])

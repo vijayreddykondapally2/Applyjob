@@ -27,6 +27,10 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     libasound2 \
     libpq-dev \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    dbus-x11 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
