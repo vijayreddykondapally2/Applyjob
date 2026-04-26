@@ -74,8 +74,8 @@ def start_remote_session(user_id, portal="linkedin"):
                             page.keyboard.press(params.get("key"))
                             session_data["results"][cmd_id] = {"success": True}
                         elif cmd == "screenshot":
-                            profile_dir = user_browser_profile_dir(user_id, portal)
-                            path = os.path.join(profile_dir, "remote_view.jpg")
+                            current_profile_dir = user_browser_profile_dir(user_id, portal)
+                            path = os.path.join(current_profile_dir, "remote_view.jpg")
                             page.screenshot(path=path, type="jpeg", quality=60)
                             session_data["results"][cmd_id] = {"success": True, "filename": "remote_view.jpg", "portal": portal}
                     except Exception as e:
@@ -91,7 +91,7 @@ def start_remote_session(user_id, portal="linkedin"):
     
     for _ in range(20):
         if user_id in _active_sessions:
-            return {"success": True, "session": _active_sessions[user_id]}
+            return {"success": True}
         if user_id in _launch_errors:
             error_msg = _launch_errors[user_id]
             print(f"Abort start: {error_msg}")

@@ -380,7 +380,7 @@ def api_remote_image():
     from flask import send_from_directory, request
     portal = request.args.get("portal", "linkedin")
     profile_dir = user_browser_profile_dir(current_user.id, portal)
-    return send_from_directory(profile_dir, "remote_view.jpg", cache_timeout=0)
+    return send_from_directory(profile_dir, "remote_view.jpg", max_age=0)
 
 
 @app.route("/api/remote/sync", methods=["POST"])
