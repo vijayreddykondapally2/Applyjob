@@ -35,6 +35,12 @@ def prompt_profile_if_missing() -> Dict[str, Any]:
         print(f"Profile loaded: {profile.get('full_name', 'unknown')} ({profile.get('email', '')})")
         return profile
 
+    from app.utils import should_run_headless
+    if should_run_headless():
+        print("\nERROR: No saved profile found and cannot prompt in headless mode.")
+        print("Please ensure your profile is configured in the web dashboard.")
+        return {}
+
     print("\nNo saved profile found at data/profile.json.")
     print("You can copy your profile.json there and re-run, or fill in basics now.\n")
     profile = {
