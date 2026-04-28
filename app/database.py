@@ -38,8 +38,7 @@ def _ensure_db_dir():
 def _init_pg_pool():
     global _pg_pool
     if _pg_pool is None and DB_URL:
-        # options="-c search_path=applyai" ensures all connections default to our schema
-        _pg_pool = ThreadedConnectionPool(1, 20, DB_URL, connect_timeout=10, options="-c search_path=applyai")
+        _pg_pool = ThreadedConnectionPool(1, 20, DB_URL, connect_timeout=10)
 
 @contextmanager
 def get_db():

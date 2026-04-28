@@ -10,12 +10,12 @@
     {% block head_extra %}{% endblock %}
 </head>
 <body>
-    {% if current_user.is_authenticated %}
     <nav class="top-nav">
         <div class="nav-inner">
-            <a href="{{ url_for('dashboard') }}" class="nav-brand">
+            <a href="{{ url_for('dashboard') if current_user.is_authenticated else url_for('login') }}" class="nav-brand">
                 <span class="brand-icon">⚡</span> ApplyJob AI
             </a>
+            {% if current_user.is_authenticated %}
             <div class="nav-links">
                 <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
                     <span class="nav-icon">📊</span> Dashboard
@@ -36,9 +36,15 @@
                 <span class="user-badge">{{ current_user.full_name or current_user.email }}</span>
                 <a href="{{ url_for('logout') }}" class="btn btn-sm btn-ghost">Logout</a>
             </div>
+            {% else %}
+            <div class="nav-links">
+                <a href="{{ url_for('register') }}" class="nav-link">Sign Up</a>
+                <a href="{{ url_for('login') }}" class="btn btn-sm btn-primary">Login</a>
+            </div>
+            {% endif %}
         </div>
     </nav>
-    {% endif %}
+
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}

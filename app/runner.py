@@ -212,7 +212,10 @@ def run() -> None:
         except Exception:
             if keep_browser_open and not headless:
                 print("\nError occurred. Browser kept open for inspection.")
-                input("Press Enter to close browser and exit…")
+                try:
+                    input("Press Enter to close browser and exit…")
+                except EOFError:
+                    pass
                 prompted_close = True
             raise
         finally:
@@ -221,5 +224,8 @@ def run() -> None:
                     print(f"\n[Parallel] LinkedIn task finished. Terminal input disabled in parallel mode. Browser will stay open for a few minutes...")
                     time.sleep(300) 
                 else:
-                    input("\nAll done. Press Enter to close browser")
+                    try:
+                        input("\nAll done. Press Enter to close browser")
+                    except EOFError:
+                        pass
 

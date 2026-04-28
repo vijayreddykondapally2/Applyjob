@@ -2,12 +2,16 @@
 {% block title %}Register — ApplyJob AI{% endblock %}
 
 {% block content %}
-<div class="auth-wrapper">
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-logo">⚡</div>
-            <h1>Create Account</h1>
-            <p>Start automating your job applications today</p>
+<div class="container">
+    <div class="page-header" style="text-align: center; margin-top: 4rem;">
+        <h1 class="page-title">Create Account</h1>
+        <p class="page-subtitle">Start automating your job applications today</p>
+    </div>
+
+    <div class="card" style="max-width: 500px; margin: 2rem auto; padding: 2.5rem;">
+        <div class="auth-header" style="text-align: center; margin-bottom: 2rem;">
+            <div class="auth-logo" style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
+            <h2 style="margin: 0; font-size: 1.5rem;">Join ApplyJob AI</h2>
         </div>
 
         <form method="POST" action="{{ url_for('register') }}" class="auth-form">
@@ -17,49 +21,31 @@
                        placeholder="John Doe" autocomplete="name" autofocus>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 1.5rem;">
                 <label for="email">Email Address</label>
                 <input type="email" id="email" name="email" required
                        placeholder="you@example.com" autocomplete="email">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 1.5rem;">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required
                        placeholder="Min 6 characters" autocomplete="new-password" minlength="6">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 1.5rem;">
                 <label for="confirm_password">Confirm Password</label>
                 <input type="password" id="confirm_password" name="confirm_password" required
                        placeholder="••••••••" autocomplete="new-password">
             </div>
 
-            <button type="submit" class="btn btn-primary btn-full" id="register-btn">
+            <button type="submit" class="btn btn-primary btn-full" id="register-btn" style="margin-top: 2.5rem; height: 50px; font-weight: 600;">
                 Create Account
             </button>
         </form>
 
-        <div class="auth-footer">
-            <p>Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
-        </div>
-    </div>
-
-    <div class="auth-features">
-        <div class="feature-item">
-            <div class="feature-icon">🔒</div>
-            <h3>Secure</h3>
-            <p>Passwords are hashed with bcrypt — your data stays safe</p>
-        </div>
-        <div class="feature-item">
-            <div class="feature-icon">🚀</div>
-            <h3>Instant Setup</h3>
-            <p>Add your portal credentials and start applying in minutes</p>
-        </div>
-        <div class="feature-item">
-            <div class="feature-icon">📈</div>
-            <h3>Track Progress</h3>
-            <p>Real-time logs, application history & portal stats</p>
+        <div class="auth-footer" style="text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+            <p class="text-muted">Already have an account? <a href="{{ url_for('login') }}" style="color: #4f46e5; font-weight: 600;">Sign in</a></p>
         </div>
     </div>
 </div>

@@ -97,6 +97,10 @@ def load_user(user_id):
 # Auth routes
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@app.route("/health")
+def health_check():
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}, 200
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:

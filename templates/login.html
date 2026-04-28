@@ -2,52 +2,54 @@
 {% block title %}Login — ApplyJob AI{% endblock %}
 
 {% block content %}
-<div class="auth-wrapper">
-    <div class="auth-card">
-        <div class="auth-header">
-            <div class="auth-logo">⚡</div>
-            <h1>Welcome Back</h1>
-            <p>Sign in to your ApplyJob AI account</p>
+<div class="container">
+    <div class="page-header" style="text-align: center; margin-top: 4rem;">
+        <h1 class="page-title">Welcome Back</h1>
+        <p class="page-subtitle">Sign in to your ApplyJob AI account</p>
+    </div>
+
+    <div class="card" style="max-width: 450px; margin: 2rem auto; padding: 2.5rem;">
+        <div class="auth-header" style="text-align: center; margin-bottom: 2rem;">
+            <div class="auth-logo" style="font-size: 3rem; margin-bottom: 1rem;">⚡</div>
+            <h2 style="margin: 0; font-size: 1.5rem;">Sign In</h2>
         </div>
 
         <form method="POST" action="{{ url_for('login') }}" class="auth-form">
             <div class="form-group">
                 <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" required
+                <input type="email" id="email" name="email" required 
                        placeholder="you@example.com" autocomplete="email" autofocus>
             </div>
-
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 1.5rem;">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required
+                <input type="password" id="password" name="password" required 
                        placeholder="••••••••" autocomplete="current-password">
             </div>
-
-            <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+            <button type="submit" class="btn btn-primary btn-full" id="login-btn" style="margin-top: 2rem; height: 50px; font-weight: 600;">
                 Sign In
             </button>
         </form>
 
-        <div class="auth-footer">
-            <p>Don't have an account? <a href="{{ url_for('register') }}">Create one</a></p>
+        <div class="auth-footer" style="text-align: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05);">
+            <p class="text-muted">Don't have an account? <a href="{{ url_for('register') }}" style="color: #4f46e5; font-weight: 600;">Create Account</a></p>
         </div>
     </div>
-
-    <div class="auth-features">
-        <div class="feature-item">
-            <div class="feature-icon">🤖</div>
-            <h3>AI-Powered</h3>
-            <p>Groq AI fills forms intelligently using your profile</p>
+    
+    <div style="max-width: 800px; margin: 4rem auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; text-align: center;">
+        <div class="feature-small">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🤖</div>
+            <h4 style="margin-bottom: 0.25rem;">AI-Powered</h4>
+            <p style="font-size: 0.85rem; color: #a0aec0;">Groq AI fills forms intelligently using your profile</p>
         </div>
-        <div class="feature-item">
-            <div class="feature-icon">🌐</div>
-            <h3>4 Portals</h3>
-            <p>LinkedIn, Naukri, Foundit & Monster — all at once</p>
+        <div class="feature-small">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">🌐</div>
+            <h4 style="margin-bottom: 0.25rem;">4 Portals</h4>
+            <p style="font-size: 0.85rem; color: #a0aec0;">LinkedIn, Naukri, Foundit & Monster</p>
         </div>
-        <div class="feature-item">
-            <div class="feature-icon">👥</div>
-            <h3>Multi-User</h3>
-            <p>Each user gets isolated profiles, credentials & history</p>
+        <div class="feature-small">
+            <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">👥</div>
+            <h4 style="margin-bottom: 0.25rem;">Multi-User</h4>
+            <p style="font-size: 0.85rem; color: #a0aec0;">Isolated profiles, credentials & history</p>
         </div>
     </div>
 </div>

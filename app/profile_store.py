@@ -36,28 +36,34 @@ def prompt_profile_if_missing() -> Dict[str, Any]:
         return profile
 
     from app.utils import should_run_headless
-    if should_run_headless():
-        print("\nERROR: No saved profile found and cannot prompt in headless mode.")
-        print("Please ensure your profile is configured in the web dashboard.")
+    is_non_interactive = os.getenv("RAILWAY") or os.getenv("RAILWAY_ENVIRONMENT") or os.path.exists("/.dockerenv")
+    
+    if should_run_headless() or is_non_interactive:
+        print("\nERROR: No saved profile found and cannot prompt in non-interactive/headless mode.")
+        print("Please ensure your profile is configured in the web dashboard or copy data/profile.json.")
         return {}
 
     print("\nNo saved profile found at data/profile.json.")
     print("You can copy your profile.json there and re-run, or fill in basics now.\n")
-    profile = {
-        "full_name": input("Full name: ").strip(),
-        "email": input("Email: ").strip(),
-        "phone": input("Phone: ").strip(),
-        "linkedin_url": input("LinkedIn URL: ").strip(),
-        "work_authorization": input("Work authorization (e.g. Yes): ").strip(),
-        "current_title": input("Current title: ").strip(),
-        "years_experience": input("Years of experience: ").strip(),
-        "notice_period_days": input("Notice period (days): ").strip(),
-        "school": input("School/College: ").strip(),
-        "resume_path": input("Resume file path: ").strip(),
-        "current_ctc": input("Current CTC: ").strip(),
-        "expected_ctc": input("Expected CTC: ").strip(),
-        "current_city": input("Current city: ").strip(),
-    }
-    save_profile(profile)
-    print("\nProfile saved to data/profile.json\n")
-    return profile
+    try:
+        profile = {
+            "full_name": input("Full name: ").strip(),
+            "email": input("Email: ").strip(),
+            "phone": input("Phone: ").strip(),
+            "linkedin_url": input("LinkedIn URL: ").strip(),
+            "work_authorization": input("Work authorization (e.g. Yes): ").strip(),
+            "current_title": input("Current title: ").strip(),
+            "years_experience": input("Years of experience: ").strip(),
+            "notice_period_days": input("Notice period (days): ").strip(),
+            "school": input("School/College: ").strip(),
+            "resume_path": input("Resume file path: ").strip(),
+            "current_ctc": input("Current CTC: ").strip(),
+            "expected_ctc": input("Expected CTC: ").strip(),
+            "current_city": input("Current city: ").strip(),
+        }
+        save_profile(profile)
+        print("\nProfile saved to data/profile.json\n")
+        return profile
+    except EOFError:
+        print("\nERROR: EOF detected during interactive prompt. Fallback to empty profile.")
+        return {}

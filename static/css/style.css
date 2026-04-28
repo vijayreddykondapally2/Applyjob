@@ -331,39 +331,27 @@ select option { background: var(--bg-surface); }
 }
 .cred-header { margin-bottom: 0.25rem; }
 
-/* ── Auth Pages ─────────────────────────────────────────────── */
+/* ── Auth Pages (Standardized) ───────────────────────────────── */
 
-.auth-wrapper {
-    display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; gap: 0;
+.auth-card-centered {
+    max-width: 480px;
+    margin: 2rem auto;
+    padding: 3rem;
 }
 
-.auth-card {
-    display: flex; flex-direction: column; justify-content: center;
-    padding: 3rem; max-width: 480px; margin: 0 auto; width: 100%;
+.feature-small {
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    transition: var(--transition);
 }
 
-.auth-header { margin-bottom: 2rem; }
-.auth-logo { font-size: 3rem; margin-bottom: 1rem; }
-.auth-header h1 { font-size: 1.75rem; font-weight: 800; margin-bottom: 0.35rem; }
-.auth-header p { color: var(--text-muted); font-size: 0.95rem; }
-
-.auth-form { display: flex; flex-direction: column; gap: 1.25rem; }
-.auth-form .btn { margin-top: 0.5rem; }
-
-.auth-footer { margin-top: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.875rem; }
-.auth-footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
-.auth-footer a:hover { text-decoration: underline; }
-
-.auth-features {
-    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.05));
-    display: flex; flex-direction: column; justify-content: center; gap: 2.5rem;
-    padding: 3rem; border-left: 1px solid var(--glass-border);
+.feature-small:hover {
+    background: rgba(255, 255, 255, 0.04);
+    transform: translateY(-2px);
 }
 
-.feature-item { max-width: 320px; }
-.feature-icon { font-size: 2rem; margin-bottom: 0.75rem; }
-.feature-item h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.35rem; }
-.feature-item p { color: var(--text-muted); font-size: 0.875rem; line-height: 1.5; }
 
 /* ── Flash Messages ─────────────────────────────────────────── */
 
